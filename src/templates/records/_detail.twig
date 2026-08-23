@@ -1,0 +1,123 @@
+{% extends '_layouts/cp' %}
+
+{% set title = 'Record {id}'|t('waver', { id: record.id }) %}
+{% set selectedSubnavItem = 'records' %}
+
+{% set crumbs = [
+    { label: 'Waver'|t('waver'), url: url('waver') },
+    { label: 'Records'|t('waver'), url: url('waver/records') }
+] %}
+
+{% block content %}
+    <div class="pane">
+        <table class="data fullwidth">
+            <tbody>
+                <tr><th>{{ 'Status'|t('waver') }}</th><td><span class="status {{ record.getStatusColor() }}"></span>{{ record.status|t('waver') }}</td></tr>
+                <tr><th>{{ 'Kind'|t('waver') }}</th><td>{{ record.kind|t('waver') }}</td></tr>
+                <tr>
+                    <th>{{ 'Order'|t('waver') }}</th>
+                    <td>
+                        {% if order %}
+                            <a href="{{ order.getCpEditUrl() }}">{{ order.reference ?? order.getShortNumber() }}</a>
+                        {% else %}
+                            {{ record.orderId }}
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr><th>{{ 'Amount'|t('waver') }}</th><td>{{ record.amount ? record.amount|number_format(2) : '—' }} {{ record.currency }}</td></tr>
+                <tr><th>{{ 'External id'|t('waver') }}</th><td><code>{{ record.externalId }}</code></td></tr>
+                <tr><th>{{ 'Wave id'|t('waver') }}</th><td>{{ record.waveId ? '<code>' ~ record.waveId ~ '</code>'|raw : '—' }}</td></tr>
+                <tr><th>{{ 'Attempts'|t('waver') }}</th><td>{{ record.attempts }}</td></tr>
+                <tr><th>{{ 'Recorded'|t('waver') }}</th><td>{{ record.dateSynced ? record.dateSynced|datetime('short') : '—' }}</td></tr>
+                {% if record.viewUrl %}
+                    <tr><th>{{ 'In Wave'|t('waver') }}</th><td><a href="{{ record.viewUrl }}" rel="noopener noreferrer" target="_blank">{{ record.invoiceNumber ?? record.viewUrl }}</a></td></tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if record.message %}
+        <div class="pane">
+            <p class="{{ record.isFailed() ? 'error' : 'light' }}">{{ record.message }}</p>
+        </div>
+    {% endif %}
+
+    {% if record.status == 'pending' and record.attempts > 0 %}
+        <div class="pane" style="border-left: 3px solid #e5a34c;">
+            <p>
+                <strong>{{ 'This one is in doubt.'|t('waver') }}</strong>
+                {{ 'Waver sent it and never heard back. Wave has no way to look a money transaction up afterwards — there is no transactions query, and the Transaction type exposes only an id — so nothing here can tell you whether it landed. Open Wave, search for the date and amount, then say which it was.'|t('waver') }}
+            </p>
+        </div>
+    {% endif %}
+
+    <div class="buttons">
+        {% if canSync %}
+            <button type="button" class="btn" data-waver-resolve="{{ record.id }}">{{ 'Ask Wave'|t('waver') }}</button>
+        {% endif %}
+        {% if canOverride %}
+            <button type="button" class="btn" data-waver-mark="{{ record.id }}">{{ 'Mark as recorded'|t('waver') }}</button>
+            <button type="button" class="btn" data-waver-force="{{ record.orderId }}">{{ 'Force resend'|t('waver') }}</button>
+            <button type="button" class="btn" data-waver-delete="{{ record.id }}">{{ 'Delete record'|t('waver') }}</button>
+        {% endif %}
+    </div>
+
+    {% if record.payload %}
+        <div class="pane" style="margin-top: 16px;">
+            <h2>{{ 'What was sent'|t('waver') }}</h2>
+            <pre style="white-space: pre-wrap; word-break: break-word;">{{ record.getPrettyPayload() }}</pre>
+        </div>
+    {% endif %}
+
+    {% js %}
+    (function() {
+        function post(action, data, confirmText) {
+            if (confirmText && !window.confirm(confirmText)) {
+                return;
+            }
+            Craft.sendActionRequest('POST', action, { data: data })
+                .then(function(response) {
+                    if (response.data.message) {
+                        response.data.success ? Craft.cp.displayNotice(response.data.message) : Craft.cp.displayError(response.data.message);
+                    }
+                    window.setTimeout(function() { window.location.reload(); }, 900);
+                })
+                .catch(function(error) {
+                    Craft.cp.displayError((error.response && error.response.data && error.response.data.message) || {{ 'That did not work.'|t('waver')|json_encode|raw }});
+                });
+        }
+
+        var resolve = document.querySelector('[data-waver-resolve]');
+        if (resolve) {
+            resolve.addEventListener('click', function() {
+                post('waver/records/resolve', { recordId: resolve.getAttribute('data-waver-resolve') });
+            });
+        }
+
+        var mark = document.querySelector('[data-waver-mark]');
+        if (mark) {
+            mark.addEventListener('click', function() {
+                var waveId = window.prompt({{ 'Wave’s id for it, if you have it. Leave blank to just mark it recorded.'|t('waver')|json_encode|raw }}, '');
+                if (waveId === null) { return; }
+                post('waver/records/mark-recorded', { recordId: mark.getAttribute('data-waver-mark'), waveId: waveId });
+            });
+        }
+
+        var force = document.querySelector('[data-waver-force]');
+        if (force) {
+            force.addEventListener('click', function() {
+                post('waver/records/sync', { orderId: force.getAttribute('data-waver-force'), force: 1 },
+                    {{ 'Send this to Wave again? If the first attempt did land, this will record the same money twice.'|t('waver')|json_encode|raw }});
+            });
+        }
+
+        var del = document.querySelector('[data-waver-delete]');
+        if (del) {
+            del.addEventListener('click', function() {
+                post('waver/records/delete', { recordId: del.getAttribute('data-waver-delete') },
+                    {{ 'Delete this record? Nothing is removed from Wave — the order simply becomes eligible to be recorded again.'|t('waver')|json_encode|raw }});
+            });
+        }
+    })();
+    {% endjs %}
+{% endblock %}

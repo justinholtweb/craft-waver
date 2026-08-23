@@ -1,0 +1,61 @@
+{% extends '_layouts/cp' %}
+
+{% set title = 'Wave connection log'|t('waver') %}
+{% set selectedSubnavItem = 'log' %}
+
+{% set crumbs = [
+    { label: 'Waver'|t('waver'), url: url('waver') }
+] %}
+
+{% block content %}
+    <div class="btngroup" style="margin-bottom: 16px;">
+        <a href="{{ url('waver/log') }}" class="btn{{ currentLevel ? '' : ' active' }}">{{ 'All'|t('waver') }}</a>
+        {% for level in ['info', 'warning', 'error'] %}
+            <a href="{{ url('waver/log', { level: level }) }}" class="btn{{ currentLevel == level ? ' active' : '' }}">{{ level|t('waver') }}</a>
+        {% endfor %}
+    </div>
+
+    {% if entries|length %}
+        <table class="data fullwidth">
+            <thead>
+                <tr>
+                    <th scope="col">{{ 'When'|t('waver') }}</th>
+                    <th scope="col">{{ 'Action'|t('waver') }}</th>
+                    <th scope="col">{{ 'Summary'|t('waver') }}</th>
+                    <th scope="col">{{ 'Status'|t('waver') }}</th>
+                    <th scope="col">{{ 'Took'|t('waver') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in entries %}
+                    <tr>
+                        <td><a href="{{ url('waver/log/' ~ entry.id) }}">{{ entry.dateCreated|datetime('short') }}</a></td>
+                        <td><span class="status {{ entry.getLevelColor() }}"></span>{{ entry.action }}</td>
+                        <td>{{ entry.summary }}</td>
+                        <td>{{ entry.statusCode ?? '—' }}</td>
+                        <td>{{ entry.durationMs ? entry.durationMs ~ 'ms' : '—' }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="buttons" style="margin-top: 16px;">
+            <button type="button" class="btn" data-waver-clear-log>{{ 'Clear the log'|t('waver') }}</button>
+        </div>
+
+        {% js %}
+        (function() {
+            var clear = document.querySelector('[data-waver-clear-log]');
+            if (!clear) { return; }
+            clear.addEventListener('click', function() {
+                if (!window.confirm({{ 'Delete every log entry?'|t('waver')|json_encode|raw }})) { return; }
+                Craft.sendActionRequest('POST', 'waver/log/clear')
+                    .then(function() { window.location.reload(); })
+                    .catch(function() { Craft.cp.displayError({{ 'That did not work.'|t('waver')|json_encode|raw }}); });
+            });
+        })();
+        {% endjs %}
+    {% else %}
+        <p class="light">{{ 'Nothing logged yet.'|t('waver') }}</p>
+    {% endif %}
+{% endblock %}

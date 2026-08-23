@@ -1,0 +1,69 @@
+{% extends '_layouts/cp' %}
+{% import '_includes/forms' as forms %}
+
+{% set title = 'Wave records'|t('waver') %}
+{% set selectedSubnavItem = 'records' %}
+
+{% set crumbs = [
+    { label: 'Waver'|t('waver'), url: url('waver') }
+] %}
+
+{% block content %}
+    <div class="btngroup" style="margin-bottom: 16px;">
+        <a href="{{ url('waver/records') }}" class="btn{{ currentStatus ? '' : ' active' }}">
+            {{ 'All'|t('waver') }}
+        </a>
+        {% for status, count in counts %}
+            <a href="{{ url('waver/records', { status: status }) }}" class="btn{{ currentStatus == status ? ' active' : '' }}">
+                {{ status|t('waver') }} <span class="light">{{ count }}</span>
+            </a>
+        {% endfor %}
+    </div>
+
+    {% if records|length %}
+        <table class="data fullwidth">
+            <thead>
+                <tr>
+                    <th scope="col">{{ 'Order'|t('waver') }}</th>
+                    <th scope="col">{{ 'Kind'|t('waver') }}</th>
+                    <th scope="col">{{ 'Status'|t('waver') }}</th>
+                    <th scope="col">{{ 'Amount'|t('waver') }}</th>
+                    <th scope="col">{{ 'Recorded'|t('waver') }}</th>
+                    <th scope="col">{{ 'In Wave'|t('waver') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in records %}
+                    {% set order = orders[record.orderId] ?? null %}
+                    <tr>
+                        <td>
+                            <a href="{{ url('waver/records/' ~ record.id) }}">
+                                {{ order ? (order.reference ?? order.getShortNumber()) : ('Order #' ~ record.orderId) }}
+                            </a>
+                        </td>
+                        <td>{{ record.kind|t('waver') }}</td>
+                        <td>
+                            <span class="status {{ record.getStatusColor() }}"></span>{{ record.status|t('waver') }}
+                            {% if record.status == 'pending' and record.attempts > 0 %}
+                                <span class="light">{{ '— attempted, unconfirmed'|t('waver') }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ record.amount ? record.amount|number_format(2) : '—' }} {{ record.currency }}</td>
+                        <td>{{ record.dateSynced ? record.dateSynced|datetime('short') : '—' }}</td>
+                        <td>
+                            {% if record.viewUrl %}
+                                <a href="{{ record.viewUrl }}" rel="noopener noreferrer" target="_blank">{{ record.invoiceNumber ?? 'View'|t('waver') }}</a>
+                            {% elseif record.waveId %}
+                                <code class="light">{{ record.waveId|slice(0, 16) }}…</code>
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="light">{{ 'Nothing has been recorded in Wave yet.'|t('waver') }}</p>
+    {% endif %}
+{% endblock %}

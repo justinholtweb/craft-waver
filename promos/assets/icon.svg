@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Waver">
+    <rect width="100" height="100" rx="22" fill="#12405A"/>
+    <!-- the ledger: three ruled lines the money is written on -->
+    <rect x="20" y="30" width="60" height="6" rx="3" fill="#8FB8CC" opacity="0.45"/>
+    <rect x="20" y="46" width="60" height="6" rx="3" fill="#8FB8CC" opacity="0.45"/>
+    <rect x="20" y="62" width="60" height="6" rx="3" fill="#8FB8CC" opacity="0.45"/>
+    <!-- the wave running across them -->
+    <path d="M14 60 C 27 38, 39 38, 50 52 C 61 66, 73 66, 86 44"
+          fill="none" stroke="#3FC4B0" stroke-width="9" stroke-linecap="round"/>
+    <!-- the balance point: where the lines meet the anchor -->
+    <circle cx="50" cy="52" r="6.5" fill="#12405A"/>
+    <circle cx="50" cy="52" r="4" fill="#FFFFFF"/>
+</svg>

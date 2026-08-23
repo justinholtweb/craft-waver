@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- The wave only. The icon's ledger rules are 6px in a 100px box, which at watermark scale
+       become ~70px slabs and read as hard-edged grey boxes across the slide — the same trap the
+       app icon's frame causes. A single stroke survives being blown up and faded. -->
+  <path d="M8 62 C 24 34, 38 34, 50 52 C 62 70, 76 70, 92 40"
+        fill="none" stroke="#ffffff" stroke-width="11" stroke-linecap="round"/>
+</svg>

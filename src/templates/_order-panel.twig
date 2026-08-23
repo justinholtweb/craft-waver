@@ -1,0 +1,121 @@
+{#
+    Rendered into Commerce's own order edit screen through the
+    `cp.commerce.order.edit.details` hook.
+#}
+<div class="waver-panel" style="margin-top: 24px;">
+    <h3>{{ 'Wave'|t('waver') }}</h3>
+
+    {% if records|length %}
+        <table class="data fullwidth">
+            <thead>
+                <tr>
+                    <th scope="col">{{ 'Kind'|t('waver') }}</th>
+                    <th scope="col">{{ 'Status'|t('waver') }}</th>
+                    <th scope="col">{{ 'Amount'|t('waver') }}</th>
+                    <th scope="col">{{ 'Recorded'|t('waver') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in records %}
+                    <tr>
+                        <td><a href="{{ url('waver/records/' ~ record.id) }}">{{ record.kind|t('waver') }}</a></td>
+                        <td>
+                            <span class="status {{ record.getStatusColor() }}"></span>{{ record.status|t('waver') }}
+                            {% if record.status == 'pending' and record.attempts > 0 %}
+                                <span class="light">{{ '— unconfirmed'|t('waver') }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ record.amount ? record.amount|number_format(2) : '—' }}</td>
+                        <td>{{ record.dateSynced ? record.dateSynced|datetime('short') : '—' }}</td>
+                    </tr>
+                    {% if record.message %}
+                        <tr>
+                            <td colspan="4" class="{{ record.isFailed() ? 'error' : 'light' }}" style="font-size: 12px;">{{ record.message }}</td>
+                        </tr>
+                    {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="light">{{ 'This order has not been recorded in Wave.'|t('waver') }}</p>
+    {% endif %}
+
+    <div class="buttons" style="margin-top: 10px;">
+        <button type="button" class="btn" data-waver-preview="{{ order.id }}">{{ 'Preview entry'|t('waver') }}</button>
+        {% if canSync %}
+            <button type="button" class="btn submit" data-waver-send="{{ order.id }}">{{ 'Send to Wave'|t('waver') }}</button>
+        {% endif %}
+    </div>
+</div>
+
+{% js %}
+(function() {
+    var preview = document.querySelector('[data-waver-preview]');
+
+    if (preview) {
+        preview.addEventListener('click', function() {
+            Craft.sendActionRequest('GET', 'waver/records/preview', { params: { orderId: preview.getAttribute('data-waver-preview') } })
+                .then(function(response) {
+                    var data = response.data;
+                    var modal = document.createElement('div');
+                    modal.className = 'modal';
+                    modal.style.cssText = 'padding: 24px; overflow: auto; max-height: 80vh;';
+
+                    var heading = document.createElement('h2');
+                    heading.textContent = {{ 'What Wave would be sent'|t('waver')|json_encode|raw }};
+                    modal.appendChild(heading);
+
+                    var table = document.createElement('table');
+                    table.className = 'data fullwidth';
+                    var head = table.createTHead().insertRow();
+                    [{{ 'Role'|t('waver')|json_encode|raw }}, {{ 'Account'|t('waver')|json_encode|raw }}, {{ 'Debit'|t('waver')|json_encode|raw }}, {{ 'Credit'|t('waver')|json_encode|raw }}].forEach(function(label) {
+                        var th = document.createElement('th');
+                        th.textContent = label;
+                        head.appendChild(th);
+                    });
+
+                    var body = table.createTBody();
+                    (data.rows || []).forEach(function(row) {
+                        var tr = body.insertRow();
+                        // Every value goes in as text, never as markup: a line description comes
+                        // from a merchant-editable product title.
+                        [row.role, row.account, row.debit || '', row.credit || ''].forEach(function(value) {
+                            tr.insertCell().textContent = value;
+                        });
+                    });
+                    modal.appendChild(table);
+
+                    var verdict = document.createElement('p');
+                    verdict.className = data.sendable ? 'light' : 'error';
+                    verdict.textContent = data.sendable
+                        ? {{ 'Balanced and ready to send.'|t('waver')|json_encode|raw }}
+                        : (data.blockers || []).concat(data.skipReasons || []).join(' ');
+                    modal.appendChild(verdict);
+
+                    document.body.appendChild(modal);
+                    new Garnish.Modal(modal, { resizable: true });
+                })
+                .catch(function() { Craft.cp.displayError({{ 'Could not build a preview.'|t('waver')|json_encode|raw }}); });
+        });
+    }
+
+    var send = document.querySelector('[data-waver-send]');
+
+    if (send) {
+        send.addEventListener('click', function() {
+            send.classList.add('disabled');
+            Craft.sendActionRequest('POST', 'waver/records/sync', { data: { orderId: send.getAttribute('data-waver-send') } })
+                .then(function(response) {
+                    response.data.success
+                        ? Craft.cp.displayNotice(response.data.message)
+                        : Craft.cp.displayError(response.data.message);
+                    window.setTimeout(function() { window.location.reload(); }, 900);
+                })
+                .catch(function(error) {
+                    send.classList.remove('disabled');
+                    Craft.cp.displayError((error.response && error.response.data && error.response.data.message) || {{ 'Could not reach Wave.'|t('waver')|json_encode|raw }});
+                });
+        });
+    }
+})();
+{% endjs %}

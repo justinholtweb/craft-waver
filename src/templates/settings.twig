@@ -1,0 +1,603 @@
+{# Field names carry no `settings[…]` prefix: `craft\base\Plugin::settingsResponse()` runs this
+   template's output through `View::namespaceInputs(…, 'settings')`, so a name written as
+   `settings[foo]` here posts as `settings[settings][foo]` and saves nothing at all — the screen
+   looks perfect, Craft says "Plugin settings saved", and every edit is silently discarded. #}
+{% import '_includes/forms' as forms %}
+
+{% set commerceReady = craft.app.plugins.isPluginEnabled('commerce') %}
+
+{# Account menus are built from Wave's cached chart of accounts. An empty option is always first
+   so that an unconfigured install is honestly blank rather than silently pointing at whichever
+   account happened to sort first. #}
+{% set accountOptions = [{ label: '—'|t('waver'), value: '' }] %}
+{% set anchorOptions = [{ label: '—'|t('waver'), value: '' }] %}
+{% for account in accounts %}
+    {% set accountOptions = accountOptions|merge([{ label: account.getLabel(), value: account.id }]) %}
+    {% if account.isAnchorCandidate() %}
+        {% set anchorOptions = anchorOptions|merge([{ label: account.getLabel(), value: account.id }]) %}
+    {% endif %}
+{% endfor %}
+
+{% set statusList = [] %}
+{% if commerceReady %}
+    {% for status in craft.commerce.orderStatuses.getAllOrderStatuses() %}
+        {% set statusList = statusList|merge([{ label: status.name, value: status.handle }]) %}
+    {% endfor %}
+{% endif %}
+
+{% if not commerceReady %}
+    <div class="pane">
+        <p class="error">{{ 'Craft Commerce is not installed or enabled. Waver needs it to do anything.'|t('waver') }}</p>
+    </div>
+{% endif %}
+
+{% if not isPro %}
+    <div class="pane" style="border-left: 3px solid #cdd8e4;">
+        <p>
+            <strong>{{ 'You’re running Waver Lite.'|t('waver') }}</strong>
+            {{ 'Invoice mode, refunds, the connection log, per-store businesses, per-gateway accounts and the sales tax map are Pro features. Their settings are shown below but have no effect until you upgrade.'|t('waver') }}
+        </p>
+    </div>
+{% endif %}
+
+{# ------------------------------------------------------------------ #}
+<h2>{{ 'Connection'|t('waver') }}</h2>
+
+<div class="pane">
+    <p>
+        {{ 'Create an application in Wave’s developer portal, then generate a full access token for it. The token reaches every business on your Wave account, so keep it in an environment variable rather than in the database.'|t('waver') }}
+    </p>
+</div>
+
+{{ forms.autosuggestField({
+    label: 'Access token'|t('waver'),
+    instructions: 'Sent to Wave as `Authorization: Bearer …`.'|t('waver'),
+    id: 'accessToken',
+    name: 'accessToken',
+    value: settings.accessToken,
+    suggestEnvVars: true
+}) }}
+
+{{ forms.autosuggestField({
+    label: 'Business'|t('waver'),
+    instructions: 'The Wave business id orders are recorded against. Use “Test connection” below to list the ids this token can reach.'|t('waver'),
+    id: 'businessId',
+    name: 'businessId',
+    value: settings.businessId,
+    suggestEnvVars: true,
+    class: 'code'
+}) }}
+
+<div class="field">
+    <div class="heading"><label>{{ 'Check it works'|t('waver') }}</label></div>
+    <div class="input">
+        <div class="buttons">
+            <button type="button" class="btn" data-waver-test>{{ 'Test connection'|t('waver') }}</button>
+            <button type="button" class="btn" data-waver-check-business>{{ 'Check business'|t('waver') }}</button>
+        </div>
+        <div id="waver-connection-result" class="light" style="margin-top: 8px;"></div>
+    </div>
+</div>
+
+{{ forms.textField({
+    label: 'Timeout'|t('waver'),
+    instructions: 'Seconds to wait on Wave before giving up.'|t('waver'),
+    id: 'timeout',
+    name: 'timeout',
+    type: 'number',
+    size: 5,
+    value: settings.timeout
+}) }}
+
+{# ------------------------------------------------------------------ #}
+<hr>
+<h2>{{ 'What gets recorded'|t('waver') }}</h2>
+
+{{ forms.selectField({
+    label: 'Record each order as'|t('waver'),
+    instructions: 'A **money transaction** is one call, needs no Wave catalogue, and books the money to the cent — the right choice for a storefront that has already been paid. An **invoice** is a document you can send, but Wave computes its own tax, every line needs a matching Wave product, and shipping has nowhere to go.'|t('waver')|md,
+    id: 'recordAs',
+    name: 'recordAs',
+    value: settings.recordAs,
+    options: [
+        { label: 'A money transaction'|t('waver'), value: 'transaction' },
+        { label: 'An invoice (Pro)'|t('waver'), value: 'invoice' }
+    ]
+}) }}
+
+{% if settings.recordAs == 'invoice' and not isPro %}
+    <p class="warning">{{ 'Invoice mode is a Pro feature. Orders will be recorded as money transactions until you upgrade.'|t('waver') }}</p>
+{% endif %}
+
+{{ forms.lightswitchField({
+    label: 'Record orders automatically'|t('waver'),
+    instructions: 'Off leaves everything to the order screen and the console commands.'|t('waver'),
+    id: 'autoSync',
+    name: 'autoSync',
+    on: settings.autoSync
+}) }}
+
+{{ forms.selectField({
+    label: 'Record when'|t('waver'),
+    id: 'syncTrigger',
+    name: 'syncTrigger',
+    value: settings.syncTrigger,
+    options: [
+        { label: 'The order is completed'|t('waver'), value: 'complete' },
+        { label: 'The order reaches a status (Pro)'|t('waver'), value: 'status' },
+        { label: 'Never — only on request'|t('waver'), value: 'manual' }
+    ]
+}) }}
+
+{{ forms.checkboxSelectField({
+    label: 'Statuses that trigger a recording'|t('waver'),
+    instructions: 'Only used when “Record when” is set to a status.'|t('waver'),
+    id: 'syncStatusHandles',
+    name: 'syncStatusHandles',
+    options: statusList,
+    values: settings.syncStatusHandles
+}) }}
+
+{{ forms.lightswitchField({
+    label: 'Only record orders paid in full'|t('waver'),
+    instructions: 'A money transaction says cash arrived. With this on, an order with an outstanding balance is skipped with a note rather than posted as income you have not received.'|t('waver'),
+    id: 'requireFullyPaid',
+    name: 'requireFullyPaid',
+    on: settings.requireFullyPaid
+}) }}
+
+{{ forms.textField({
+    label: 'Description'|t('waver'),
+    instructions: 'An object template rendered against the order. This is what you will read in Wave’s transaction list.'|t('waver'),
+    id: 'descriptionTemplate',
+    name: 'descriptionTemplate',
+    value: settings.descriptionTemplate,
+    class: 'code'
+}) }}
+
+{{ forms.textField({
+    label: 'Rounding tolerance'|t('waver'),
+    instructions: 'Commerce keeps money in floats and Wave takes two decimals, so a multi-line order can land a cent away from its own total. A residual up to this size is posted to the rounding account; anything larger is refused, because at that point it is not rounding.'|t('waver'),
+    id: 'roundingTolerance',
+    name: 'roundingTolerance',
+    type: 'number',
+    step: '0.01',
+    size: 6,
+    value: settings.roundingTolerance
+}) }}
+
+{# ------------------------------------------------------------------ #}
+<hr>
+<h2>{{ 'Accounts'|t('waver') }}</h2>
+
+<div class="pane">
+    {% if accounts|length %}
+        <p>{{ '{count} accounts loaded from Wave.'|t('waver', { count: accounts|length }) }}</p>
+    {% else %}
+        <p class="warning">
+            {{ 'No chart of accounts has been loaded yet. Save a working token and business above, then refresh.'|t('waver') }}
+        </p>
+    {% endif %}
+    <div class="buttons">
+        <button type="button" class="btn" data-waver-refresh>{{ 'Refresh from Wave'|t('waver') }}</button>
+    </div>
+</div>
+
+{{ forms.selectField({
+    label: 'Payment account'|t('waver'),
+    instructions: 'The bank, clearing or card account the money landed in. Wave calls this the *anchor*, and every transaction has exactly one.'|t('waver')|md(null, true),
+    id: 'paymentAccountId',
+    name: 'paymentAccountId',
+    value: settings.paymentAccountId,
+    options: anchorOptions
+}) }}
+
+{{ forms.selectField({
+    label: 'Sales account'|t('waver'),
+    instructions: 'Where the goods themselves are booked.'|t('waver'),
+    id: 'salesAccountId',
+    name: 'salesAccountId',
+    value: settings.salesAccountId,
+    options: accountOptions
+}) }}
+
+{{ forms.selectField({
+    label: 'Shipping account'|t('waver'),
+    instructions: 'Shipping charged to the customer. Falls back to the sales account.'|t('waver'),
+    id: 'shippingAccountId',
+    name: 'shippingAccountId',
+    value: settings.shippingAccountId,
+    options: accountOptions
+}) }}
+
+{{ forms.selectField({
+    label: 'Sales tax account'|t('waver'),
+    instructions: 'Tax you collected on somebody else’s behalf — a liability, not income. Pick an account with the “Sales Tax” subtype.'|t('waver'),
+    id: 'taxAccountId',
+    name: 'taxAccountId',
+    value: settings.taxAccountId,
+    options: accountOptions
+}) }}
+
+{{ forms.selectField({
+    label: 'Discounts account'|t('waver'),
+    instructions: 'A contra-income account, subtype “Discount”. Waver books discounts as an *increase* on it, which is how Wave records more discount.'|t('waver')|md(null, true),
+    id: 'discountAccountId',
+    name: 'discountAccountId',
+    value: settings.discountAccountId,
+    options: accountOptions
+}) }}
+
+{{ forms.selectField({
+    label: 'Fees account'|t('waver'),
+    instructions: 'Where a negative custom adjustment goes — a fee taken out of the same payment.'|t('waver'),
+    id: 'feeAccountId',
+    name: 'feeAccountId',
+    value: settings.feeAccountId,
+    options: accountOptions
+}) }}
+
+{{ forms.selectField({
+    label: 'Other income account'|t('waver'),
+    instructions: 'Where a positive custom adjustment goes — a surcharge. Falls back to the sales account.'|t('waver'),
+    id: 'otherIncomeAccountId',
+    name: 'otherIncomeAccountId',
+    value: settings.otherIncomeAccountId,
+    options: accountOptions
+}) }}
+
+{{ forms.selectField({
+    label: 'Rounding account'|t('waver'),
+    instructions: 'Where a sub-cent residual lands. Falls back to the sales account.'|t('waver'),
+    id: 'roundingAccountId',
+    name: 'roundingAccountId',
+    value: settings.roundingAccountId,
+    options: accountOptions
+}) }}
+
+{{ forms.selectField({
+    label: 'Refunds account'|t('waver'),
+    instructions: 'The income account a refund is taken back out of. Falls back to the sales account.'|t('waver'),
+    id: 'refundAccountId',
+    name: 'refundAccountId',
+    value: settings.refundAccountId,
+    options: accountOptions
+}) }}
+
+{{ forms.editableTableField({
+    label: 'Payment accounts by gateway (Pro)'|t('waver'),
+    instructions: 'Send Stripe money somewhere other than cheques. The gateway handle on the left, a Wave account id on the right. Anything not listed uses the payment account above.'|t('waver'),
+    id: 'gatewayAccountMap',
+    name: 'gatewayAccountMap',
+    cols: {
+        gateway: { heading: 'Gateway handle'|t('waver'), type: 'singleline', code: true },
+        account: { heading: 'Wave account id'|t('waver'), type: 'singleline', code: true }
+    },
+    rows: gatewayRows,
+    addRowLabel: 'Add a gateway'|t('waver'),
+    allowAdd: true,
+    allowDelete: true,
+    allowReorder: false
+}) }}
+
+{{ forms.editableTableField({
+    label: 'Businesses by store (Pro)'|t('waver'),
+    instructions: 'For a Commerce install with more than one store. The store id on the left, a Wave business id on the right.'|t('waver'),
+    id: 'businessMap',
+    name: 'businessMap',
+    cols: {
+        store: { heading: 'Store id'|t('waver'), type: 'singleline', code: true },
+        business: { heading: 'Wave business id'|t('waver'), type: 'singleline', code: true }
+    },
+    rows: businessRows,
+    addRowLabel: 'Add a store'|t('waver'),
+    allowAdd: true,
+    allowDelete: true,
+    allowReorder: false
+}) }}
+
+{# ------------------------------------------------------------------ #}
+<hr>
+<h2>{{ 'Customers'|t('waver') }}</h2>
+
+<div class="pane">
+    <p class="light">
+        {{ 'Wave can only be asked for a customer by email address — there is no lookup by name or by external id. An order with no email is recorded without a customer rather than creating a new one every time.'|t('waver') }}
+    </p>
+</div>
+
+{{ forms.lightswitchField({
+    label: 'Create Wave customers'|t('waver'),
+    instructions: 'Create a customer in Wave when no existing one matches the order’s email.'|t('waver'),
+    id: 'createCustomers',
+    name: 'createCustomers',
+    on: settings.createCustomers
+}) }}
+
+{{ forms.lightswitchField({
+    label: 'Attach the customer to the income line'|t('waver'),
+    instructions: 'So Wave’s customer reports can see the sale.'|t('waver'),
+    id: 'attachCustomerToLines',
+    name: 'attachCustomerToLines',
+    on: settings.attachCustomerToLines
+}) }}
+
+{# ------------------------------------------------------------------ #}
+<hr>
+<h2>{{ 'Invoice mode (Pro)'|t('waver') }}</h2>
+
+<div class="pane">
+    <p class="light">
+        {{ 'Every Wave invoice line must name a product — Wave has no free-text line — so invoice mode needs a Wave product per SKU. Wave products carry no SKU of their own, so Waver keeps its own map; clearing it will create duplicates in Wave next time.'|t('waver') }}
+    </p>
+</div>
+
+{{ forms.selectField({
+    label: 'Create invoices as'|t('waver'),
+    instructions: 'A draft does not appear in Wave’s reports until it is approved.'|t('waver'),
+    id: 'invoiceStatus',
+    name: 'invoiceStatus',
+    value: settings.invoiceStatus,
+    options: [
+        { label: 'Saved'|t('waver'), value: 'SAVED' },
+        { label: 'Draft'|t('waver'), value: 'DRAFT' }
+    ]
+}) }}
+
+{{ forms.lightswitchField({
+    label: 'Approve the invoice'|t('waver'),
+    id: 'approveInvoice',
+    name: 'approveInvoice',
+    on: settings.approveInvoice
+}) }}
+
+{{ forms.lightswitchField({
+    label: 'Mark the invoice paid'|t('waver'),
+    instructions: 'Records a manual payment for the amount Commerce has taken, so the invoice does not sit in Wave as unpaid.'|t('waver'),
+    id: 'markInvoicePaid',
+    name: 'markInvoicePaid',
+    on: settings.markInvoicePaid
+}) }}
+
+{{ forms.selectField({
+    label: 'Payment method'|t('waver'),
+    id: 'invoicePaymentMethod',
+    name: 'invoicePaymentMethod',
+    value: settings.invoicePaymentMethod,
+    options: [
+        { label: 'Work it out from the gateway'|t('waver'), value: 'auto' },
+        { label: 'Credit card'|t('waver'), value: 'CREDIT_CARD' },
+        { label: 'Bank transfer'|t('waver'), value: 'BANK_TRANSFER' },
+        { label: 'PayPal'|t('waver'), value: 'PAYPAL' },
+        { label: 'Cash'|t('waver'), value: 'CASH' },
+        { label: 'Cheque'|t('waver'), value: 'CHEQUE' },
+        { label: 'Other'|t('waver'), value: 'OTHER' },
+        { label: 'Unspecified'|t('waver'), value: 'UNSPECIFIED' }
+    ]
+}) }}
+
+{{ forms.lightswitchField({
+    label: 'Email the invoice'|t('waver'),
+    instructions: 'Wave sends it. Needs email sending to be enabled on the business.'|t('waver'),
+    id: 'sendInvoice',
+    name: 'sendInvoice',
+    on: settings.sendInvoice
+}) }}
+
+{{ forms.selectField({
+    label: 'Invoice number'|t('waver'),
+    id: 'invoiceNumberSource',
+    name: 'invoiceNumberSource',
+    value: settings.invoiceNumberSource,
+    options: [
+        { label: 'The order reference'|t('waver'), value: 'reference' },
+        { label: 'The order number'|t('waver'), value: 'number' },
+        { label: 'The short order number'|t('waver'), value: 'shortNumber' },
+        { label: 'The order id'|t('waver'), value: 'id' },
+        { label: 'Let Wave number it'|t('waver'), value: 'wave' }
+    ]
+}) }}
+
+{{ forms.textField({
+    label: 'Invoice title'|t('waver'),
+    instructions: 'Blank uses the business’s default.'|t('waver'),
+    id: 'invoiceTitle',
+    name: 'invoiceTitle',
+    value: settings.invoiceTitle
+}) }}
+
+{{ forms.textareaField({
+    label: 'Memo'|t('waver'),
+    instructions: 'An object template rendered against the order.'|t('waver'),
+    id: 'invoiceMemoTemplate',
+    name: 'invoiceMemoTemplate',
+    value: settings.invoiceMemoTemplate,
+    rows: 2,
+    class: 'code'
+}) }}
+
+{{ forms.textField({
+    label: 'Footer'|t('waver'),
+    id: 'invoiceFooter',
+    name: 'invoiceFooter',
+    value: settings.invoiceFooter
+}) }}
+
+{{ forms.lightswitchField({
+    label: 'Create Wave products'|t('waver'),
+    instructions: 'Create a Wave product for a SKU it has never seen. With this off, an unmapped SKU blocks the invoice.'|t('waver'),
+    id: 'createProducts',
+    name: 'createProducts',
+    on: settings.createProducts
+}) }}
+
+{{ forms.selectField({
+    label: 'Income account for new products'|t('waver'),
+    instructions: 'Wave requires one of the “Income”, “Discount” or “Other Income” subtypes. Falls back to the sales account.'|t('waver'),
+    id: 'productIncomeAccountId',
+    name: 'productIncomeAccountId',
+    value: settings.productIncomeAccountId,
+    options: accountOptions
+}) }}
+
+{% set taxOptions = [{ label: '—'|t('waver'), value: '' }] %}
+{% for tax in salesTaxes %}
+    {% set taxOptions = taxOptions|merge([{ label: tax.name ~ ' (' ~ tax.rate ~ ')', value: tax.id }]) %}
+{% endfor %}
+
+{{ forms.editableTableField({
+    label: 'Sales tax map'|t('waver'),
+    instructions: 'Commerce tax rate name on the left, the Wave sales tax it means on the right. Used by invoice mode only — a money transaction books tax straight to the sales tax account above.'|t('waver'),
+    id: 'taxMap',
+    name: 'taxMap',
+    cols: {
+        rate: { heading: 'Commerce tax rate name'|t('waver'), type: 'singleline' },
+        tax: { heading: 'Wave sales tax'|t('waver'), type: 'select', options: taxOptions }
+    },
+    rows: taxRows,
+    addRowLabel: 'Add a tax rate'|t('waver'),
+    allowAdd: true,
+    allowDelete: true,
+    allowReorder: false
+}) }}
+
+{# ------------------------------------------------------------------ #}
+<hr>
+<h2>{{ 'Refunds (Pro)'|t('waver') }}</h2>
+
+{{ forms.lightswitchField({
+    label: 'Record refunds'|t('waver'),
+    instructions: 'A successful Commerce refund becomes its own withdrawal in Wave, taken back out of the refunds account.'|t('waver'),
+    id: 'syncRefunds',
+    name: 'syncRefunds',
+    on: settings.syncRefunds
+}) }}
+
+{# ------------------------------------------------------------------ #}
+<hr>
+<h2>{{ 'Logging'|t('waver') }}</h2>
+
+{{ forms.lightswitchField({
+    label: 'Log the connection'|t('waver'),
+    id: 'loggingEnabled',
+    name: 'loggingEnabled',
+    on: settings.loggingEnabled
+}) }}
+
+{{ forms.lightswitchField({
+    label: 'Keep payloads (Pro)'|t('waver'),
+    instructions: 'Store the GraphQL body and Wave’s reply on each log row. Off keeps only the summary.'|t('waver'),
+    id: 'logPayloads',
+    name: 'logPayloads',
+    on: settings.logPayloads
+}) }}
+
+{{ forms.textField({
+    label: 'Keep log entries for'|t('waver'),
+    instructions: 'Days. 0 keeps everything. Lite is capped at 7 days so the table cannot grow without a screen to prune it from.'|t('waver'),
+    id: 'logRetentionDays',
+    name: 'logRetentionDays',
+    type: 'number',
+    size: 5,
+    value: settings.logRetentionDays
+}) }}
+
+{# ------------------------------------------------------------------ #}
+<hr>
+<h2>{{ 'Maintenance'|t('waver') }}</h2>
+
+<div class="pane">
+    <p class="light">
+        {{ 'Clearing the maps makes Waver look everything up in Wave again. It never deletes anything from Wave — but where a customer or product cannot be matched by email or by exact name, Wave will gain a duplicate.'|t('waver') }}
+    </p>
+    <div class="buttons">
+        <button type="button" class="btn" data-waver-clear-maps>{{ 'Clear customer and product maps'|t('waver') }}</button>
+    </div>
+</div>
+
+{# Secondary actions post through `Craft.sendActionRequest` rather than their own `<form>`: this
+   template is already inside Craft's settings form, and a nested form does not submit. #}
+{% js %}
+(function() {
+    var result = document.getElementById('waver-connection-result');
+
+    function say(text, isError) {
+        result.textContent = text;
+        result.style.color = isError ? '#cf1124' : '';
+    }
+
+    function tokenField() {
+        return document.querySelector('input[name="settings[accessToken]"]');
+    }
+
+    var test = document.querySelector('[data-waver-test]');
+    if (test) {
+        test.addEventListener('click', function() {
+            say({{ 'Asking Wave…'|t('waver')|json_encode|raw }}, false);
+            Craft.sendActionRequest('POST', 'waver/settings/test')
+                .then(function(response) {
+                    var data = response.data;
+                    say(data.message, !data.success);
+                    if (data.businesses && data.businesses.length) {
+                        var list = document.createElement('ul');
+                        data.businesses.forEach(function(business) {
+                            var item = document.createElement('li');
+                            var code = document.createElement('code');
+                            code.textContent = business.id;
+                            item.appendChild(document.createTextNode(business.name + ' — '));
+                            item.appendChild(code);
+                            list.appendChild(item);
+                        });
+                        result.appendChild(list);
+                    }
+                })
+                .catch(function(error) {
+                    say((error.response && error.response.data && error.response.data.message) || {{ 'Could not reach Wave.'|t('waver')|json_encode|raw }}, true);
+                });
+        });
+    }
+
+    var check = document.querySelector('[data-waver-check-business]');
+    if (check) {
+        check.addEventListener('click', function() {
+            var field = document.querySelector('input[name="settings[businessId]"]');
+            say({{ 'Asking Wave…'|t('waver')|json_encode|raw }}, false);
+            Craft.sendActionRequest('POST', 'waver/settings/check-business', {
+                data: { businessId: field ? field.value : '' }
+            })
+                .then(function(response) {
+                    var data = response.data;
+                    say(data.message, !data.success);
+                    (data.warnings || []).forEach(function(warning) {
+                        var p = document.createElement('p');
+                        p.className = 'warning';
+                        p.textContent = warning;
+                        result.appendChild(p);
+                    });
+                })
+                .catch(function() { say({{ 'Could not reach Wave.'|t('waver')|json_encode|raw }}, true); });
+        });
+    }
+
+    function post(action, confirmText) {
+        if (confirmText && !window.confirm(confirmText)) {
+            return;
+        }
+        Craft.sendActionRequest('POST', action, { data: { redirect: window.location.pathname } })
+            .then(function() { window.location.reload(); })
+            .catch(function() { Craft.cp.displayError({{ 'That did not work.'|t('waver')|json_encode|raw }}); });
+    }
+
+    var refresh = document.querySelector('[data-waver-refresh]');
+    if (refresh) {
+        refresh.addEventListener('click', function() { post('waver/settings/refresh'); });
+    }
+
+    var clear = document.querySelector('[data-waver-clear-maps]');
+    if (clear) {
+        clear.addEventListener('click', function() {
+            post('waver/settings/clear-maps', {{ 'Clear the customer and product maps? Wave itself is untouched, but unmatched customers and products will be created again.'|t('waver')|json_encode|raw }});
+        });
+    }
+})();
+{% endjs %}

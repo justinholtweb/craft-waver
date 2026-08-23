@@ -1,0 +1,48 @@
+{% extends '_layouts/cp' %}
+
+{% set title = 'Log entry {id}'|t('waver', { id: entry.id }) %}
+{% set selectedSubnavItem = 'log' %}
+
+{% set crumbs = [
+    { label: 'Waver'|t('waver'), url: url('waver') },
+    { label: 'Log'|t('waver'), url: url('waver/log') }
+] %}
+
+{% block content %}
+    <div class="pane">
+        <table class="data fullwidth">
+            <tbody>
+                <tr><th>{{ 'When'|t('waver') }}</th><td>{{ entry.dateCreated|datetime('short') }}</td></tr>
+                <tr><th>{{ 'Action'|t('waver') }}</th><td>{{ entry.action }}</td></tr>
+                <tr><th>{{ 'Level'|t('waver') }}</th><td><span class="status {{ entry.getLevelColor() }}"></span>{{ entry.level }}</td></tr>
+                <tr><th>{{ 'HTTP status'|t('waver') }}</th><td>{{ entry.statusCode ?? '—' }}</td></tr>
+                <tr><th>{{ 'Took'|t('waver') }}</th><td>{{ entry.durationMs ? entry.durationMs ~ 'ms' : '—' }}</td></tr>
+                {% if entry.orderId %}
+                    <tr><th>{{ 'Order'|t('waver') }}</th><td>{{ entry.orderId }}</td></tr>
+                {% endif %}
+                <tr><th>{{ 'Summary'|t('waver') }}</th><td>{{ entry.summary }}</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    {% set request = entry.getPrettyRequest() %}
+    {% set response = entry.getPrettyResponse() %}
+
+    {% if request %}
+        <div class="pane">
+            <h2>{{ 'Request'|t('waver') }}</h2>
+            <pre style="white-space: pre-wrap; word-break: break-word;">{{ request }}</pre>
+        </div>
+    {% endif %}
+
+    {% if response %}
+        <div class="pane">
+            <h2>{{ 'Response'|t('waver') }}</h2>
+            <pre style="white-space: pre-wrap; word-break: break-word;">{{ response }}</pre>
+        </div>
+    {% endif %}
+
+    {% if not request and not response %}
+        <p class="light">{{ 'Payloads are not being kept. Turn on “Keep payloads” in the settings to see them here.'|t('waver') }}</p>
+    {% endif %}
+{% endblock %}

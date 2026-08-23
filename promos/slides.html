@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<!-- handmade: hand-tuned deck -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Waver — Plugin Store promos</title>
+<link rel="stylesheet" href="fonts.css">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --charcoal: #0c111a;
+    --charcoal-light: #141c28;
+    --charcoal-lighter: #1e2836;
+    --accent: #12405A;
+    --accent-light: #3FC4B0;
+    --gold: #F2C14E;
+    --off-white: #eff3f6;
+  }
+
+  html { background: #000; }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    color: var(--off-white);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---- slide shell ---------------------------------------------------- */
+  .slide {
+    position: relative;
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    background:
+      radial-gradient(ellipse at 85% 15%, rgba(63, 196, 176, 0.20) 0%, transparent 40%),
+      radial-gradient(ellipse at 65% 5%,  rgba(18, 64, 90, 0.42) 0%, transparent 38%),
+      radial-gradient(ellipse at 15% 85%, rgba(242, 193, 78, 0.06) 0%, transparent 40%),
+      radial-gradient(ellipse at 35% 95%, rgba(63, 196, 176, 0.08) 0%, transparent 35%),
+      linear-gradient(135deg, #0c111a 0%, #0e1b24 30%, #102028 60%, #0c111a 100%);
+  }
+
+  /* Oversized watermark, echoing the app icon with its frame stripped */
+  .slide::after {
+    content: '';
+    position: absolute;
+    top: -18%;
+    left: -12%;
+    width: 1180px;
+    height: 1180px;
+    background: url('assets/watermark.svg') no-repeat center / contain;
+    opacity: 0.05;
+    pointer-events: none;
+  }
+
+  /* Hairline along the top edge */
+  .slide::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 6px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-light), var(--gold), var(--accent));
+    z-index: 5;
+  }
+
+  .inner {
+    position: relative;
+    z-index: 2;
+    height: 100%;
+    padding: 118px 130px;
+    display: flex;
+    align-items: center;
+  }
+
+  /* ---- type ------------------------------------------------------------ */
+  .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    font-size: 20px;
+    font-weight: 500;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: rgba(239, 243, 246, 0.62);
+    margin-bottom: 34px;
+  }
+  .eyebrow .rule {
+    width: 58px;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--accent-light);
+  }
+
+  h1, h2 {
+    font-family: 'Jersey 20', sans-serif;
+    font-weight: 400;
+    line-height: 0.9;
+    letter-spacing: 0.005em;
+  }
+
+  .gradient-text {
+    background: linear-gradient(100deg, #3FC4B0 0%, #6fd9c9 34%, #F2C14E 68%, #3FC4B0 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .lede {
+    font-size: 34px;
+    line-height: 1.5;
+    color: rgba(239, 243, 246, 0.72);
+  }
+
+  .mono {
+    font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  }
+
+  /* ---- cover slide ----------------------------------------------------- */
+  .cover .inner { gap: 90px; }
+  .cover .copy { flex: 1 1 auto; }
+  .cover h1 { font-size: 210px; margin-bottom: 26px; }
+  .cover .tagline {
+    font-family: 'Jersey 20', sans-serif;
+    font-size: 60px;
+    line-height: 1.02;
+    color: var(--off-white);
+    margin-bottom: 40px;
+    max-width: 15ch;
+  }
+  .cover .lede { max-width: 27ch; font-size: 30px; }
+
+  .cover .mark {
+    flex: 0 0 auto;
+    width: 460px;
+    height: 460px;
+    filter: drop-shadow(14px 14px 0 rgba(0, 0, 0, 0.35));
+  }
+  .cover .mark img { width: 100%; height: 100%; display: block; }
+
+  .badges { display: flex; gap: 16px; margin-top: 52px; }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 26px;
+    font-size: 22px;
+    font-weight: 500;
+    color: rgba(239, 243, 246, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 999px;
+  }
+  .badge .dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--accent-light);
+  }
+
+  /* ---- the centred statement ------------------------------------------- */
+  .statement .inner { flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 90px 130px; }
+  .statement .eyebrow { justify-content: center; }
+  .statement h2 { font-size: 88px; margin-bottom: 34px; }
+  .statement .lede { margin-top: 32px; max-width: 46ch; font-size: 28px; }
+
+  /* The ledger block — the whole product, in one picture */
+  .ledger {
+    width: 1320px;
+    border-radius: 20px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    box-shadow: 0 30px 90px rgba(0, 0, 0, 0.5);
+    text-align: left;
+  }
+  .ledger .anchor {
+    display: flex;
+    align-items: baseline;
+    gap: 26px;
+    padding: 26px 46px;
+    background: rgba(18, 64, 90, 0.55);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+  }
+  .ledger .anchor .who { font-size: 30px; color: rgba(239, 243, 246, 0.55); flex: 1 1 auto; }
+  .ledger .anchor .dir {
+    font-size: 21px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--accent-light);
+  }
+  .ledger .anchor .amt { font-size: 42px; font-family: 'Jersey 20', sans-serif; color: var(--off-white); }
+
+  .ledger .head, .ledger .row { display: flex; padding: 17px 46px; font-size: 27px; }
+  .ledger .head {
+    background: rgba(30, 40, 54, 0.75);
+    font-size: 20px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: rgba(239, 243, 246, 0.5);
+  }
+  .ledger .row {
+    background: rgba(20, 28, 40, 0.72);
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+  }
+  .ledger .c1 { flex: 0 0 300px; color: rgba(239, 243, 246, 0.55); }
+  .ledger .c2 { flex: 1 1 auto; color: var(--off-white); }
+  .ledger .c3, .ledger .c4 { flex: 0 0 190px; text-align: right; }
+  .ledger .c3 { color: var(--gold); }
+  .ledger .c4 { color: var(--accent-light); }
+  .ledger .foot {
+    display: flex; padding: 20px 46px;
+    background: rgba(63, 196, 176, 0.12);
+    border-top: 1px solid rgba(63, 196, 176, 0.25);
+    font-size: 26px; letter-spacing: 0.06em;
+    color: var(--accent-light);
+  }
+  .ledger .foot .spacer { flex: 1 1 auto; }
+
+  /* ---- feature slides -------------------------------------------------- */
+  .feature .inner { align-items: center; }
+  .feature .copy { width: 780px; flex: 0 0 780px; }
+  .feature h2 { font-size: 108px; margin-bottom: 30px; }
+  .feature .lede { max-width: 21ch; }
+
+  .points {
+    list-style: none;
+    margin-top: 44px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .points li {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    font-size: 25px;
+    line-height: 1.4;
+    color: rgba(239, 243, 246, 0.6);
+  }
+  .points li .tick {
+    flex: 0 0 auto;
+    margin-top: 9px;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--accent-light);
+  }
+
+  /* Right-hand panel shared by the split, balance, steps and refusal slides */
+  .panel {
+    position: absolute;
+    top: 50%;
+    left: 900px;
+    right: 130px;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+
+  /* ---- the included-tax split ------------------------------------------ */
+  .split { display: flex; gap: 24px; }
+  .card {
+    flex: 1 1 0;
+    padding: 38px 34px;
+    border-radius: 18px;
+    background: rgba(30, 40, 54, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .card .kicker {
+    font-size: 21px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: rgba(239, 243, 246, 0.42); margin-bottom: 24px;
+  }
+  .card.wrong { border-color: rgba(214, 90, 90, 0.35); background: rgba(60, 30, 34, 0.4); }
+  .card.wrong .kicker { color: #e08a8a; }
+  .card.right { border-color: rgba(63, 196, 176, 0.35); }
+  .card.right .kicker { color: var(--accent-light); }
+  .card .line { display: flex; justify-content: space-between; font-size: 28px; padding: 12px 0; }
+  .card .line span:first-child { color: rgba(239, 243, 246, 0.55); }
+  .card .line span:last-child { color: var(--off-white); }
+  .card .line.muted span { color: rgba(239, 243, 246, 0.3); }
+  .card .verdict {
+    margin-top: 24px; padding-top: 22px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 24px; line-height: 1.4;
+  }
+  .card.wrong .verdict { color: #e08a8a; }
+  .card.right .verdict { color: var(--accent-light); }
+
+  /* ---- the balance strip ------------------------------------------------ */
+  .scale {
+    padding: 42px 44px;
+    border-radius: 18px;
+    background: rgba(30, 40, 54, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .scale .top {
+    display: flex; align-items: baseline; justify-content: space-between;
+    font-size: 27px; color: rgba(239, 243, 246, 0.55);
+  }
+  .scale .figures {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-top: 18px; font-family: 'Jersey 20', sans-serif; font-size: 76px;
+  }
+  .scale .figures .eq { font-size: 46px; color: rgba(239, 243, 246, 0.35); }
+  .scale.ok .figures span { color: var(--accent-light); }
+  .scale.bad .figures span { color: #e08a8a; }
+  .scale .verdict { margin-top: 22px; font-size: 25px; line-height: 1.45; }
+  .scale.ok .verdict { color: var(--accent-light); }
+  .scale.bad .verdict { color: #e08a8a; }
+
+  /* ---- numbered steps --------------------------------------------------- */
+  .step {
+    display: flex;
+    align-items: center;
+    gap: 26px;
+    padding: 28px 34px;
+    border-radius: 16px;
+    background: rgba(30, 40, 54, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .step .num {
+    flex: 0 0 auto;
+    width: 58px; height: 58px;
+    display: grid; place-items: center;
+    border-radius: 12px;
+    background: var(--accent);
+    font-family: 'Jersey 20', sans-serif;
+    font-size: 38px;
+    color: #fff;
+  }
+  .step .label { display: block; font-size: 29px; font-weight: 600; color: var(--off-white); }
+  .step .sub { display: block; font-size: 21px; color: rgba(239, 243, 246, 0.55); margin-top: 6px; }
+  .step.stop { border-color: rgba(242, 193, 78, 0.35); }
+  .step.stop .num { background: var(--gold); color: #1a1200; }
+
+  /* ---- refusals --------------------------------------------------------- */
+  .refusal {
+    display: flex;
+    align-items: flex-start;
+    gap: 24px;
+    padding: 28px 34px;
+    border-radius: 16px;
+    background: rgba(30, 40, 54, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-left: 4px solid var(--gold);
+  }
+  .refusal .mark { flex: 0 0 auto; margin-top: 4px; font-size: 30px; color: var(--gold); }
+  .refusal .what { display: block; font-size: 27px; font-weight: 600; color: var(--off-white); }
+  .refusal .why { display: block; font-size: 21px; line-height: 1.45; color: rgba(239, 243, 246, 0.55); margin-top: 8px; }
+
+  /* ---- terminal --------------------------------------------------------- */
+  .term {
+    position: absolute;
+    top: 50%;
+    left: 900px;
+    right: -110px;
+    transform: translateY(-50%);
+    border-radius: 14px; overflow: hidden;
+    box-shadow: 0 30px 90px rgba(0, 0, 0, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .term .chrome {
+    height: 44px;
+    background: #22303e;
+    background-image:
+      radial-gradient(circle at 26px 22px, #ff5f57 6.5px, transparent 7px),
+      radial-gradient(circle at 52px 22px, #ffbd2e 6.5px, transparent 7px),
+      radial-gradient(circle at 78px 22px, #28ca42 6.5px, transparent 7px);
+  }
+  .term .body {
+    background: #0d141c;
+    padding: 42px 44px;
+    font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+    font-size: 24px;
+    line-height: 1.95;
+  }
+  .term .prompt { color: var(--accent-light); }
+  .term .cmd { color: var(--off-white); }
+  .term .out { color: rgba(239, 243, 246, 0.45); }
+  .term .ok { color: #4ade80; }
+  .term .warn { color: var(--gold); }
+  .term .blank { display: block; height: 20px; }
+
+  /* ---- footer lockup --------------------------------------------------- */
+  .footer {
+    position: absolute;
+    left: 130px;
+    bottom: 62px;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    font-size: 22px;
+    letter-spacing: 0.06em;
+    color: rgba(239, 243, 246, 0.4);
+  }
+  .footer img { width: 40px; height: 40px; border-radius: 9px; }
+  .footer b { color: rgba(239, 243, 246, 0.72); font-weight: 600; }
+
+  /* Only render the requested slide when screenshotting */
+  body.single .slide { display: none; }
+  body.single .slide.active { display: block; }
+</style>
+</head>
+<body>
+
+<!-- 1 · Cover ============================================================ -->
+<section class="slide cover" data-n="1">
+  <div class="inner">
+    <div class="copy">
+      <div class="eyebrow"><span class="rule"></span> Craft Commerce 5</div>
+      <h1 class="gradient-text">Waver</h1>
+      <p class="tagline">Your orders, already in your books.</p>
+      <p class="lede">Every Commerce order recorded in Wave — balanced, deduplicated, and refused outright when it isn&rsquo;t right.</p>
+      <div class="badges">
+        <span class="badge"><span class="dot"></span> Lite free &nbsp;·&nbsp; Pro $99</span>
+        <span class="badge">Craft 5.3+ · Commerce 5 · PHP 8.2+</span>
+      </div>
+    </div>
+    <div class="mark"><img src="assets/icon.svg" alt=""></div>
+  </div>
+</section>
+
+<!-- 2 · One order, one balanced entry ==================================== -->
+<section class="slide statement" data-n="2">
+  <div class="inner">
+    <div class="eyebrow"><span class="rule"></span> The whole idea</div>
+    <h2 class="gradient-text">One order, one balanced entry</h2>
+    <div class="ledger">
+      <div class="anchor">
+        <span class="who">Order <span class="mono">#A1B2C3</span> &nbsp;&rarr;&nbsp; Business Checking</span>
+        <span class="dir">Deposit</span>
+        <span class="amt mono">$178.45</span>
+      </div>
+      <div class="head"><span class="c1">Role</span><span class="c2">Wave account</span><span class="c3">Debit</span><span class="c4">Credit</span></div>
+      <div class="row mono"><span class="c1">Items</span><span class="c2">Sales</span><span class="c3"></span><span class="c4">150.00</span></div>
+      <div class="row mono"><span class="c1">Shipping</span><span class="c2">Shipping Income</span><span class="c3"></span><span class="c4">9.95</span></div>
+      <div class="row mono"><span class="c1">Sales tax</span><span class="c2">Sales Tax</span><span class="c3"></span><span class="c4">30.50</span></div>
+      <div class="row mono"><span class="c1">Discounts</span><span class="c2">Discounts</span><span class="c3">12.00</span><span class="c4"></span></div>
+      <div class="foot"><span>Balances the deposit exactly</span><span class="spacer"></span><span class="mono">drift 0.00</span></div>
+    </div>
+    <p class="lede">Not a number pushed into a memo field — a real accounting entry, on the accounts you mapped.</p>
+  </div>
+  <div class="footer"><img src="assets/icon.svg" alt=""> <b>Waver</b> &nbsp;·&nbsp; justinholt.com/plugins/craft-waver</div>
+</section>
+
+<!-- 3 · Included tax ===================================================== -->
+<section class="slide feature" data-n="3">
+  <div class="inner">
+    <div class="copy">
+      <div class="eyebrow"><span class="rule"></span> The thing most tools miss</div>
+      <h2>Tax inside<br>the price</h2>
+      <p class="lede">Commerce keeps included tax <em>inside</em> the item subtotal, where it doesn&rsquo;t move the order total.</p>
+      <ul class="points">
+        <li><span class="tick"></span> Book that subtotal straight to sales and you record tax as revenue</li>
+        <li><span class="tick"></span> Waver takes it back out and books the liability</li>
+        <li><span class="tick"></span> The order total is unchanged either way — which is why it goes unnoticed</li>
+      </ul>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="split">
+      <div class="card wrong">
+        <div class="kicker">Straight across</div>
+        <div class="line"><span>Sales</span><span class="mono">200.00</span></div>
+        <div class="line muted"><span>Sales tax</span><span class="mono">—</span></div>
+        <div class="verdict">$33.33 of somebody else&rsquo;s tax, sitting in your income.</div>
+      </div>
+      <div class="card right">
+        <div class="kicker">Waver</div>
+        <div class="line"><span>Sales</span><span class="mono">166.67</span></div>
+        <div class="line"><span>Sales tax</span><span class="mono">33.33</span></div>
+        <div class="verdict">Income is income. The tax is a liability, where it belongs.</div>
+      </div>
+    </div>
+  </div>
+  <div class="footer"><img src="assets/icon.svg" alt=""> <b>Waver</b> &nbsp;·&nbsp; justinholt.com/plugins/craft-waver</div>
+</section>
+
+<!-- 4 · It balances, or it doesn't send ================================== -->
+<section class="slide feature" data-n="4">
+  <div class="inner">
+    <div class="copy">
+      <div class="eyebrow"><span class="rule"></span> Before anything is sent</div>
+      <h2>It balances,<br>or it doesn&rsquo;t go</h2>
+      <p class="lede">Wave rejects an entry whose lines don&rsquo;t balance — and accepts one that balances for the wrong reason.</p>
+      <ul class="points">
+        <li><span class="tick"></span> Sub-cent rounding goes to a rounding account</li>
+        <li><span class="tick"></span> Anything larger isn&rsquo;t rounding, and is refused with the drift</li>
+        <li><span class="tick"></span> Preview any order and see the exact rows first</li>
+      </ul>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="scale ok">
+      <div class="top"><span>Lines</span><span>Order total</span></div>
+      <div class="figures mono"><span>178.45</span><span class="eq">=</span><span>178.45</span></div>
+      <div class="verdict">Balanced. Sent.</div>
+    </div>
+    <div class="scale bad">
+      <div class="top"><span>Lines</span><span>Order total</span></div>
+      <div class="figures mono"><span>174.20</span><span class="eq">&ne;</span><span>178.45</span></div>
+      <div class="verdict">Out by 4.25 — beyond the rounding tolerance. Nothing sent, and the drift is on the record.</div>
+    </div>
+  </div>
+  <div class="footer"><img src="assets/icon.svg" alt=""> <b>Waver</b> &nbsp;·&nbsp; justinholt.com/plugins/craft-waver</div>
+</section>
+
+<!-- 5 · Never twice ====================================================== -->
+<section class="slide feature" data-n="5">
+  <div class="inner">
+    <div class="copy">
+      <div class="eyebrow"><span class="rule"></span> Idempotency</div>
+      <h2>Never posts<br>the same money twice</h2>
+      <p class="lede">Wave&rsquo;s API can&rsquo;t read a money transaction back — so Waver never guesses.</p>
+      <ul class="points">
+        <li><span class="tick"></span> The id comes from the order, never from a random UUID</li>
+        <li><span class="tick"></span> A unique index makes a duplicate impossible, not unlikely</li>
+      </ul>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="step"><span class="num">1</span><span><span class="label">Claim the order</span><span class="sub">A row is written <em>before</em> the call, so a crash leaves evidence</span></span></div>
+    <div class="step"><span class="num">2</span><span><span class="label">Count the attempt</span><span class="sub">Counted before Wave answers — an attempt that never returns still happened</span></span></div>
+    <div class="step"><span class="num">3</span><span><span class="label">Send once</span><span class="sub">Two queue workers racing the same order: one wins, one stands down</span></span></div>
+    <div class="step stop"><span class="num">!</span><span><span class="label">No answer? It stops.</span><span class="sub">Nothing re-sends it automatically. You decide, after looking in Wave</span></span></div>
+  </div>
+  <div class="footer"><img src="assets/icon.svg" alt=""> <b>Waver</b> &nbsp;·&nbsp; justinholt.com/plugins/craft-waver</div>
+</section>
+
+<!-- 6 · When it won't send =============================================== -->
+<section class="slide feature" data-n="6">
+  <div class="inner">
+    <div class="copy">
+      <div class="eyebrow"><span class="rule"></span> Refusals, not surprises</div>
+      <h2>Would rather<br>do nothing</h2>
+      <p class="lede">Every refusal names what is wrong and what to change. None of them is a stack trace.</p>
+      <ul class="points">
+        <li><span class="tick"></span> Checked before the call, not reported after it</li>
+        <li><span class="tick"></span> Only the accounts <em>this</em> order actually needs</li>
+      </ul>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="refusal"><span class="mark">&#9679;</span><span><span class="what">Only $60.00 of $178.45 has been captured</span><span class="why">A money transaction says cash arrived. Recorded as skipped, with the shortfall.</span></span></div>
+    <div class="refusal"><span class="mark">&#9679;</span><span><span class="what">No Wave account is mapped for Sales tax</span><span class="why">Named per account — an order without a discount is never nagged about a discounts account.</span></span></div>
+    <div class="refusal"><span class="mark">&#9679;</span><span><span class="what">This business is on Wave&rsquo;s classic accounting</span><span class="why">Money transactions don&rsquo;t work there. Said on the settings screen, not on your first sale.</span></span></div>
+    <div class="refusal"><span class="mark">&#9679;</span><span><span class="what">$9.95 of shipping, which an invoice can&rsquo;t represent</span><span class="why">Wave has no order-level charge. Told to you, rather than dropped from the total.</span></span></div>
+  </div>
+  <div class="footer"><img src="assets/icon.svg" alt=""> <b>Waver</b> &nbsp;·&nbsp; justinholt.com/plugins/craft-waver</div>
+</section>
+
+<!-- 7 · Console ========================================================== -->
+<section class="slide feature" data-n="7">
+  <div class="inner">
+    <div class="copy">
+      <div class="eyebrow"><span class="rule"></span> From the command line</div>
+      <h2>Rehearses<br>before it writes</h2>
+      <p class="lede">The dry run builds the entry through the same code the real sync uses — so a preview is the thing itself.</p>
+      <ul class="points">
+        <li><span class="tick"></span> Backfill everything that predates the install</li>
+        <li><span class="tick"></span> Retry the failures, and only the failures</li>
+      </ul>
+    </div>
+  </div>
+  <div class="term">
+    <div class="chrome"></div>
+    <div class="body">
+      <div><span class="prompt">$</span> <span class="cmd">php craft waver/sync/order 1042 --dry-run</span></div>
+      <div class="out">anchor DEPOSIT 178.45 Business Checking</div>
+      <div class="out">&nbsp;&nbsp;sales &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Sales &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;cr 150.00</div>
+      <div class="out">&nbsp;&nbsp;tax &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Sales Tax &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;cr &nbsp;30.50</div>
+      <div class="out">&nbsp;&nbsp;discount &nbsp;&nbsp;Discounts &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;dr &nbsp;12.00</div>
+      <div class="out"><span class="ok">balanced and ready to send</span></div>
+      <span class="blank"></span>
+      <div><span class="prompt">$</span> <span class="cmd">php craft waver/sync/backfill --limit=200</span></div>
+      <div class="out">synced &nbsp;&nbsp;&nbsp;order 1041 &nbsp;&nbsp;<span class="ok">1a2b3c…</span></div>
+      <div class="out">skipped &nbsp;&nbsp;order 1039 &nbsp;&nbsp;<span class="warn">not captured in full</span></div>
+      <span class="blank"></span>
+      <div><span class="prompt">$</span> <span class="cmd">php craft waver/wave/check</span></div>
+      <div class="out">Connected. <span class="ok">Books kept in USD.</span></div>
+    </div>
+  </div>
+  <div class="footer"><img src="assets/icon.svg" alt=""> <b>Waver</b> &nbsp;·&nbsp; justinholt.com/plugins/craft-waver</div>
+</section>
+
+<script>
+  var n = new URLSearchParams(location.search).get('s');
+  if (n) {
+    document.body.classList.add('single');
+    var el = document.querySelector('.slide[data-n="' + n + '"]');
+    if (el) el.classList.add('active');
+  }
+</script>
+</body>
+</html>
