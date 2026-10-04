@@ -351,7 +351,7 @@ class Wave extends Component
     // =========================================================================
 
     /**
-     * @return array{ok: bool, id: string, message: string}
+     * @return array{ok: bool, id: string, message: string, ambiguous: bool}
      */
     public function createMoneyTransaction(Entry $entry, ?int $orderId = null): array
     {
@@ -369,6 +369,7 @@ class Wave extends Component
             'ok' => $result['ok'],
             'id' => (string)($result['data']['transaction']['id'] ?? ''),
             'message' => $result['message'],
+            'ambiguous' => $result['ambiguous'],
         ];
     }
 
@@ -377,7 +378,7 @@ class Wave extends Component
 
     /**
      * @param array<string, mixed> $input
-     * @return array{ok: bool, id: string, number: string, viewUrl: string, pdfUrl: string, message: string}
+     * @return array{ok: bool, id: string, number: string, viewUrl: string, pdfUrl: string, message: string, ambiguous: bool}
      */
     public function createInvoice(array $input, ?int $orderId = null): array
     {
@@ -404,6 +405,7 @@ class Wave extends Component
             'viewUrl' => (string)($invoice['viewUrl'] ?? ''),
             'pdfUrl' => (string)($invoice['pdfUrl'] ?? ''),
             'message' => $result['message'],
+            'ambiguous' => $result['ambiguous'],
         ];
     }
 

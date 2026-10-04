@@ -266,4 +266,9 @@ return [
     '—' => '—',
     '— attempted, unconfirmed' => '— attempted, unconfirmed',
     '— unconfirmed' => '— unconfirmed',
+    'Log entry {id}' => 'Log entry {id}',
+    'Only {captured} of {total} has been captured. A money transaction records cash that arrived.' => 'Only {captured} of {total} has been captured. A money transaction records cash that arrived.',
+    'Record {id}' => 'Record {id}',
+    'This token is stored in project config, in plain text, and will be committed with it. Move it to an environment variable such as `$WAVE_ACCESS_TOKEN`.' => 'This token is stored in project config, in plain text, and will be committed with it. Move it to an environment variable such as `$WAVE_ACCESS_TOKEN`.',
+    'Waver sent this but never got a clear answer ({message}). It may or may not be in Wave, so it will not be sent again on its own. Check Wave, then use “Force resend” or “Mark as recorded”.' => 'Waver sent this but never got a clear answer ({message}). It may or may not be in Wave, so it will not be sent again on its own. Check Wave, then use “Force resend” or “Mark as recorded”.',
 ];

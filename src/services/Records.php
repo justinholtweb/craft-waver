@@ -130,7 +130,7 @@ class Records extends Component
 
         return $this->update($record, $result['ok']
             ? ['status' => Record::STATUS_SYNCED, 'waveId' => $result['id'], 'message' => null, 'dateSynced' => Db::prepareDateForDb(new DateTime())]
-            : ['status' => Record::STATUS_FAILED, 'message' => $result['message']]);
+            : $this->failure($result));
     }
 
     /**
@@ -353,7 +353,7 @@ class Records extends Component
 
         return $this->update($record, $result['ok']
             ? ['status' => Record::STATUS_SYNCED, 'waveId' => $result['id'], 'message' => null, 'dateSynced' => Db::prepareDateForDb(new DateTime())]
-            : ['status' => Record::STATUS_FAILED, 'message' => $result['message']]);
+            : $this->failure($result));
     }
 
     private function syncAsInvoice(Order $order, string $externalId): Record
@@ -396,14 +396,37 @@ class Records extends Component
                 'dateSynced' => Db::prepareDateForDb(new DateTime()),
             ]
             : [
-                'status' => Record::STATUS_FAILED,
-                'message' => $result['message'],
+                ...$this->failure($result),
                 // The invoice may exist even though a later step failed. Keeping its id is what
                 // lets the merchant find it instead of creating a second one.
                 'waveId' => $result['id'] !== '' ? $result['id'] : null,
                 'invoiceNumber' => $result['number'] !== '' ? $result['number'] : $record->invoiceNumber,
                 'viewUrl' => $result['viewUrl'] !== '' ? $result['viewUrl'] : null,
             ]);
+    }
+
+    /**
+     * What a failed send leaves on its record.
+     *
+     * A failure Wave might nonetheless have acted on — a timeout, a dropped connection, a 5xx —
+     * stays `pending`. Marking it `failed` would make it eligible to be sent again, and that is
+     * the one retry that can double a merchant's books without anybody being able to tell.
+     *
+     * @param array{message: string, ambiguous?: bool} $result
+     * @return array<string, mixed>
+     */
+    private function failure(array $result): array
+    {
+        if ($result['ambiguous'] ?? false) {
+            return [
+                'status' => Record::STATUS_PENDING,
+                'message' => Craft::t('waver', 'Waver sent this but never got a clear answer ({message}). It may or may not be in Wave, so it will not be sent again on its own. Check Wave, then use “Force resend” or “Mark as recorded”.', [
+                    'message' => $result['message'],
+                ]),
+            ];
+        }
+
+        return ['status' => Record::STATUS_FAILED, 'message' => $result['message']];
     }
 
     /**

@@ -12,6 +12,7 @@ use craft\commerce\services\OrderHistories;
 use craft\commerce\services\Transactions;
 use craft\events\RegisterUrlRulesEvent;
 use craft\events\RegisterUserPermissionsEvent;
+use craft\services\Gc;
 use craft\services\UserPermissions;
 use craft\web\twig\variables\CraftVariable;
 use craft\web\UrlManager;
@@ -94,6 +95,7 @@ class Plugin extends BasePlugin
         $this->_registerTwigVariable();
         $this->_registerPermissions();
         $this->_registerCpRoutes();
+        $this->_registerLogPruning();
 
         // The plugin can be installed while Commerce is disabled or mid-upgrade, and everything
         // below touches an order.
@@ -304,6 +306,29 @@ class Plugin extends BasePlugin
                 $event->rules['waver/records/<recordId:\d+>'] = 'waver/records/detail';
                 $event->rules['waver/log'] = 'waver/log/index';
                 $event->rules['waver/log/<entryId:\d+>'] = 'waver/log/detail';
+            }
+        );
+    }
+
+    /**
+     * Enforce the log retention setting on Craft's garbage collection run.
+     *
+     * Log rows can hold customer names, emails and addresses inside their payloads, so "keep 30
+     * days" has to actually mean 30 days, not "until somebody remembers `waver/log/prune`".
+     */
+    private function _registerLogPruning(): void
+    {
+        Event::on(
+            Gc::class,
+            Gc::EVENT_RUN,
+            static function() {
+                try {
+                    Plugin::getInstance()?->getLog()->prune();
+                } catch (\Throwable $e) {
+                    // Garbage collection runs inside ordinary requests. Diagnostics housekeeping
+                    // failing must not fail somebody's page load.
+                    Craft::warning('Waver could not prune its log: ' . $e->getMessage(), __METHOD__);
+                }
             }
         );
     }

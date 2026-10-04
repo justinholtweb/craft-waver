@@ -81,7 +81,14 @@ class SyncController extends Controller
      */
     public function actionBackfill(): int
     {
-        $since = $this->since !== null ? new DateTime($this->since) : null;
+        try {
+            $since = $this->since !== null ? new DateTime($this->since) : null;
+        } catch (\Exception) {
+            $this->stderr("--since is not a date Waver can read: {$this->since}\n", Console::FG_RED);
+
+            return ExitCode::USAGE;
+        }
+
         $orderIds = Plugin::getInstance()->getRecords()->getUnrecordedOrderIds($this->limit, $since);
 
         if ($orderIds === []) {

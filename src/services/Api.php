@@ -6,6 +6,7 @@ use Craft;
 use craft\base\Component;
 use craft\helpers\Json;
 use GuzzleHttp\Client;
+use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Exception\RequestException;
 use justinholtweb\waver\models\LogEntry;
 use justinholtweb\waver\Plugin;
@@ -25,23 +26,48 @@ use justinholtweb\waver\Plugin;
  *
  * `mutate()` therefore treats `didSucceed: false` as a failure, and every caller gets one uniform
  * result shape whichever way it went wrong.
+ *
+ * A failed mutation also says whether it is **ambiguous**: whether Wave might have acted on it
+ * even though Waver never heard so. A timeout, a dropped connection or a 5xx can all arrive after
+ * the transaction was written. Such a failure is never retried here, and the caller must treat it
+ * as "in doubt" rather than "failed", because a failed record is one that may be sent again.
  */
 class Api extends Component
 {
     public const ENDPOINT = 'https://gql.waveapps.com/graphql/public';
 
     /**
-     * Wave publishes no rate limit, so Waver does not assume one exists. A 429 or a 5xx is
-     * retried with a widening gap; anything else is final, because retrying a rejected mutation
-     * just rejects it again.
+     * Wave publishes no rate limit, so Waver does not assume one exists. A query is retried on a
+     * 429, a 5xx or a dropped connection, with a widening gap. A mutation is retried only when
+     * Wave cannot have acted on it — a 429, or a connection that was never made — because
+     * resending one that timed out is how a sale gets recorded twice.
      */
     public const MAX_ATTEMPTS = 3;
+
+    /**
+     * Seconds allowed to open the connection, separate from the overall timeout. Failing to
+     * connect is the one transport failure that proves nothing was sent.
+     */
+    public const CONNECT_TIMEOUT = 10;
+
+    /**
+     * cURL errors that mean the request never left: the host did not resolve, or refused the
+     * connection. Anything else may have reached Wave.
+     */
+    private const NEVER_SENT_ERRNOS = [6, 7];
+
+    /**
+     * A Guzzle handler to send through instead of the network. For tests only.
+     *
+     * @var callable|null
+     */
+    public mixed $handler = null;
 
     /**
      * Run a query. Read-only, so a failure returns an empty result rather than throwing.
      *
      * @param array<string, mixed> $variables
-     * @return array{ok: bool, data: array, message: string, code: string|null}
+     * @return array{ok: bool, data: array, message: string, code: string|null, ambiguous: bool}
      */
     public function query(string $action, string $query, array $variables = []): array
     {
@@ -52,11 +78,11 @@ class Api extends Component
      * Run a mutation and unwrap Wave's output object.
      *
      * @param array<string, mixed> $input
-     * @return array{ok: bool, data: array, message: string, code: string|null}
+     * @return array{ok: bool, data: array, message: string, code: string|null, ambiguous: bool}
      */
     public function mutate(string $action, string $mutation, string $field, array $input, ?int $orderId = null): array
     {
-        $result = $this->send($action, $mutation, ['input' => $input], $orderId);
+        $result = $this->send($action, $mutation, ['input' => $input], $orderId, true);
 
         if (!$result['ok']) {
             return $result;
@@ -70,6 +96,7 @@ class Api extends Component
                 'data' => [],
                 'message' => Craft::t('waver', 'Wave returned no {field} result.', ['field' => $field]),
                 'code' => 'EMPTY_RESULT',
+                'ambiguous' => false,
             ];
         }
 
@@ -80,6 +107,7 @@ class Api extends Component
                 'data' => $payload,
                 'message' => $this->describeInputErrors($payload['inputErrors'] ?? []),
                 'code' => 'INPUT_ERROR',
+                'ambiguous' => false,
             ];
         }
 
@@ -88,6 +116,7 @@ class Api extends Component
             'data' => $payload,
             'message' => '',
             'code' => null,
+            'ambiguous' => false,
         ];
     }
 
@@ -153,9 +182,11 @@ class Api extends Component
 
     /**
      * @param array<string, mixed> $variables
-     * @return array{ok: bool, data: array, message: string, code: string|null}
+     * @param bool $isMutation Whether Wave could act on this request, which decides what may be
+     *                         retried and what counts as ambiguous.
+     * @return array{ok: bool, data: array, message: string, code: string|null, ambiguous: bool}
      */
-    private function send(string $action, string $query, array $variables, ?int $orderId = null): array
+    private function send(string $action, string $query, array $variables, ?int $orderId = null, bool $isMutation = false): array
     {
         $settings = Plugin::getInstance()->getSettings();
         $token = $settings->getParsedAccessToken();
@@ -166,6 +197,7 @@ class Api extends Component
                 'data' => [],
                 'message' => Craft::t('waver', 'No Wave access token is configured.'),
                 'code' => 'NO_TOKEN',
+                'ambiguous' => false,
             ];
         }
 
@@ -185,22 +217,27 @@ class Api extends Component
                 if (!is_array($decoded)) {
                     $this->log($action, LogEntry::LEVEL_ERROR, $response->getStatusCode(), $started, 'Wave returned a non-JSON body', $encoded, $raw, $orderId);
 
-                    return ['ok' => false, 'data' => [], 'message' => Craft::t('waver', 'Wave returned a response that was not JSON.'), 'code' => 'BAD_RESPONSE'];
+                    // Something between here and Wave answered instead of Wave. Whether the
+                    // mutation got through it is anybody's guess.
+                    return ['ok' => false, 'data' => [], 'message' => Craft::t('waver', 'Wave returned a response that was not JSON.'), 'code' => 'BAD_RESPONSE', 'ambiguous' => $isMutation];
                 }
 
                 if (!empty($decoded['errors'])) {
                     [$message, $code] = $this->describeErrors($decoded['errors']);
                     $this->log($action, LogEntry::LEVEL_ERROR, $response->getStatusCode(), $started, $message, $encoded, $raw, $orderId);
 
-                    return ['ok' => false, 'data' => $decoded['data'] ?? [], 'message' => $message, 'code' => $code];
+                    return ['ok' => false, 'data' => $decoded['data'] ?? [], 'message' => $message, 'code' => $code, 'ambiguous' => false];
                 }
 
                 $this->log($action, LogEntry::LEVEL_INFO, $response->getStatusCode(), $started, Craft::t('waver', '{action} succeeded', ['action' => $action]), $encoded, $raw, $orderId);
 
-                return ['ok' => true, 'data' => $decoded['data'] ?? [], 'message' => '', 'code' => null];
+                return ['ok' => true, 'data' => $decoded['data'] ?? [], 'message' => '', 'code' => null, 'ambiguous' => false];
             } catch (\Throwable $e) {
                 $status = $this->statusOf($e);
-                $retryable = $status === null || $status === 429 || $status >= 500;
+                $neverSent = $status === 429 || $this->neverSent($e);
+                $retryable = $isMutation
+                    ? $neverSent
+                    : $status === null || $status === 429 || $status >= 500;
 
                 if ($retryable && $attempt < self::MAX_ATTEMPTS) {
                     $this->log($action, LogEntry::LEVEL_WARNING, $status, $started, Craft::t('waver', 'Attempt {n} failed, retrying: {message}', ['n' => $attempt, 'message' => $e->getMessage()]), $encoded, $this->bodyOf($e), $orderId);
@@ -211,22 +248,38 @@ class Api extends Component
                 $message = $this->describe($e);
                 $this->log($action, LogEntry::LEVEL_ERROR, $status, $started, $message, $encoded, $this->bodyOf($e), $orderId);
 
-                return ['ok' => false, 'data' => [], 'message' => $message, 'code' => $status === 401 ? 'UNAUTHENTICATED' : 'TRANSPORT'];
+                return [
+                    'ok' => false,
+                    'data' => [],
+                    'message' => $message,
+                    'code' => $status === 401 ? 'UNAUTHENTICATED' : 'TRANSPORT',
+                    // A 4xx is a refusal. No answer, or a 5xx, may have come after the write.
+                    'ambiguous' => $isMutation && !$neverSent && ($status === null || $status >= 500),
+                ];
             }
         }
     }
 
     private function client(string $token, int $timeout): Client
     {
-        return Craft::createGuzzleClient([
+        $config = [
             'base_uri' => self::ENDPOINT,
             'timeout' => $timeout,
+            'connect_timeout' => min(self::CONNECT_TIMEOUT, $timeout),
+            // The token goes to Wave and nowhere else.
+            'allow_redirects' => false,
             'headers' => [
                 'Authorization' => 'Bearer ' . $token,
                 'Content-Type' => 'application/json',
                 'Accept' => 'application/json',
             ],
-        ]);
+        ];
+
+        if ($this->handler !== null) {
+            $config['handler'] = $this->handler;
+        }
+
+        return Craft::createGuzzleClient($config);
     }
 
     /**
@@ -287,6 +340,18 @@ class Api extends Component
         }
 
         return null;
+    }
+
+    /**
+     * Whether a transport failure happened before anything reached Wave.
+     */
+    private function neverSent(\Throwable $e): bool
+    {
+        if (!$e instanceof ConnectException) {
+            return false;
+        }
+
+        return in_array($e->getHandlerContext()['errno'] ?? null, self::NEVER_SENT_ERRNOS, true);
     }
 
     private function bodyOf(\Throwable $e): ?string

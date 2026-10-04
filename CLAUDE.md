@@ -111,11 +111,17 @@ which records the full contract and the `curl` that fetches it.
 - **Wave's `invoiceNumber` filter is a *contains* match** — its own docs warn that `12` finds `112`
   and `120`. `resolveDoubtful()` only accepts an exact hit.
 - **`AddressInput.provinceCode` is ISO 3166-2** (`US-NC`), while Craft stores `NC`.
-- Wave publishes **no rate limit**, so Waver paces itself rather than assuming headroom: 429 and
-  5xx retry with a widening gap, everything else is final.
+- Wave publishes **no rate limit**, so Waver paces itself rather than assuming headroom: a query
+  retries 429, 5xx and dropped connections with a widening gap. **A mutation retries only a 429 or
+  a connection that was never made** (cURL 6/7). A timeout, a reset or a 5xx may arrive after Wave
+  wrote the transaction, so `Api` flags it `ambiguous` and `Records` leaves the row `pending` —
+  never `failed`, because `failed` is what `waver/sync/retry` resends.
 
 ## Traps found while building this
 
+- **Craft rejects an unhashed `redirect` body param with a 400** before the action reports. The
+  settings screen's XHR buttons used to post `redirect: location.pathname` and so never worked;
+  XHR actions answer with JSON instead.
 - **`Order::getOutstandingBalance()` nets refunds off**, because it is built on `getTotalPaid()`.
   Using it for the "paid in full" gate made a fully refunded order read as never paid, so its sale
   could never be recorded. `Ledger::amountCaptured()` counts successful purchase and capture
@@ -148,7 +154,7 @@ No local PHP on this Mac. Everything runs inside the plugin-testing container:
 
 ```sh
 cd ~/Sites/plugin-testing
-ddev exec php /var/www/craft-waver/tests/integration/checks.php   # 92 checks
+ddev exec php /var/www/craft-waver/tests/integration/checks.php   # 103 checks
 ddev exec bash -c 'find /var/www/craft-waver/src -name "*.php" -print0 | xargs -0 -n1 php -l'
 ```
 

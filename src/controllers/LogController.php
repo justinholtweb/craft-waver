@@ -24,6 +24,7 @@ class LogController extends Controller
             return false;
         }
 
+        $this->requireCpRequest();
         $this->requirePermission('waver-viewLog');
 
         if (!Plugin::getInstance()->isPro()) {
@@ -64,7 +65,12 @@ class LogController extends Controller
 
         $deleted = Plugin::getInstance()->getLog()->clear();
 
-        $this->setSuccessFlash(Craft::t('waver', '{count} log entries deleted.', ['count' => $deleted]));
+        $message = Craft::t('waver', '{count} log entries deleted.', ['count' => $deleted]);
+        $this->setSuccessFlash($message);
+
+        if ($this->request->getAcceptsJson()) {
+            return $this->asJson(['success' => true, 'message' => $message]);
+        }
 
         return $this->redirect(UrlHelper::cpUrl('waver/log'));
     }

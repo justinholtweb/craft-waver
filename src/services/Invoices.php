@@ -126,7 +126,7 @@ class Invoices extends Component
      * Create the invoice, then approve and pay it if the settings say so.
      *
      * @param array<string, mixed> $input
-     * @return array{ok: bool, id: string, number: string, viewUrl: string, pdfUrl: string, message: string}
+     * @return array{ok: bool, id: string, number: string, viewUrl: string, pdfUrl: string, message: string, ambiguous: bool}
      */
     public function send(Order $order, array $input): array
     {

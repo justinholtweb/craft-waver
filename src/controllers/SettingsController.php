@@ -22,6 +22,7 @@ class SettingsController extends Controller
             return false;
         }
 
+        $this->requireCpRequest();
         $this->requireAdmin();
 
         return true;
@@ -83,9 +84,7 @@ class SettingsController extends Controller
         $accounts = Plugin::getInstance()->getWave()->getAccounts($businessId, true);
         Plugin::getInstance()->getWave()->getSalesTaxes($businessId, true);
 
-        $this->setSuccessFlash(Craft::t('waver', '{count} accounts loaded from Wave.', ['count' => count($accounts)]));
-
-        return $this->redirectToPostedUrl();
+        return $this->done(Craft::t('waver', '{count} accounts loaded from Wave.', ['count' => count($accounts)]));
     }
 
     /**
@@ -98,10 +97,23 @@ class SettingsController extends Controller
         $customers = Plugin::getInstance()->getCustomers()->clearMap();
         $products = Plugin::getInstance()->getProducts()->clearMap();
 
-        $this->setSuccessFlash(Craft::t('waver', '{customers} customer and {products} product mappings cleared. Nothing was deleted from Wave.', [
+        return $this->done(Craft::t('waver', '{customers} customer and {products} product mappings cleared. Nothing was deleted from Wave.', [
             'customers' => $customers,
             'products' => $products,
         ]));
+    }
+
+    /**
+     * The settings screen posts these over XHR. Answering with a redirect would need a hashed
+     * `redirect` param, and Craft rejects an unhashed one with a 400 before the action reports.
+     */
+    private function done(string $message): Response
+    {
+        $this->setSuccessFlash($message);
+
+        if ($this->request->getAcceptsJson()) {
+            return $this->asJson(['success' => true, 'message' => $message]);
+        }
 
         return $this->redirectToPostedUrl();
     }

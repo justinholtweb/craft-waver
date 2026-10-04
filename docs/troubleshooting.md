@@ -99,9 +99,10 @@ up by number.
 
 ### Tax is showing as income
 
-Your tax is *included* in the item price and the sales tax account is not mapped, so the tax had
-nowhere to go. Map **Sales tax account** and re-check the preview: Waver takes included tax back out
-of the sales figure.
+**Sales tax account** is mapped to an income account. Waver never lets tax fall into sales — an
+order with tax and no tax account mapped is refused, not posted — so tax landing in income means
+the account it was booked to *is* income. Map the liability account Wave keeps for the tax you
+collect and re-check the preview.
 
 ### A discount is on the wrong side
 

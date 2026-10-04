@@ -142,6 +142,8 @@ class Log extends Component
             return $payload;
         }
 
-        return substr($payload, 0, self::MAX_PAYLOAD) . "\n…[truncated]";
+        // mb_strcut, not substr: cutting through a multibyte character leaves invalid UTF-8,
+        // which MySQL refuses — and a refused insert loses the whole row, not just its tail.
+        return mb_strcut($payload, 0, self::MAX_PAYLOAD, 'UTF-8') . "\n…[truncated]";
     }
 }

@@ -55,7 +55,10 @@
     id: 'accessToken',
     name: 'accessToken',
     value: settings.accessToken,
-    suggestEnvVars: true
+    suggestEnvVars: true,
+    warning: settings.accessToken and settings.accessToken[:1] != '$'
+        ? 'This token is stored in project config, in plain text, and will be committed with it. Move it to an environment variable such as `$WAVE_ACCESS_TOKEN`.'|t('waver')
+        : null
 }) }}
 
 {{ forms.autosuggestField({
@@ -526,10 +529,6 @@
         result.style.color = isError ? '#cf1124' : '';
     }
 
-    function tokenField() {
-        return document.querySelector('input[name="settings[accessToken]"]');
-    }
-
     var test = document.querySelector('[data-waver-test]');
     if (test) {
         test.addEventListener('click', function() {
@@ -583,7 +582,7 @@
         if (confirmText && !window.confirm(confirmText)) {
             return;
         }
-        Craft.sendActionRequest('POST', action, { data: { redirect: window.location.pathname } })
+        Craft.sendActionRequest('POST', action)
             .then(function() { window.location.reload(); })
             .catch(function() { Craft.cp.displayError({{ 'That did not work.'|t('waver')|json_encode|raw }}); });
     }

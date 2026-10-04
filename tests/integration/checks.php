@@ -1175,6 +1175,37 @@ try {
         return $before === $after;
     });
 
+    check('a truncated payload is still valid UTF-8, so the row is not lost', function() use ($plugin) {
+        $payload = str_repeat('é', justinholtweb\waver\services\Log::MAX_PAYLOAD);
+        $plugin->getLog()->write('fixture-utf8', ['summary' => 's', 'request' => $payload]);
+        $entry = $plugin->getLog()->getEntries(['action' => 'fixture-utf8'], 1)[0] ?? null;
+        $full = $entry ? $plugin->getLog()->getEntryById($entry->id) : null;
+
+        return $full !== null && mb_check_encoding((string)$full->request, 'UTF-8') ?: 'no row, or invalid UTF-8';
+    });
+
+    check('garbage collection enforces log retention', function() use ($plugin) {
+        $plugin->getLog()->write('fixture-old', ['summary' => 'old']);
+        Craft::$app->getDb()->createCommand()->update(Table::LOG, [
+            'dateCreated' => craft\helpers\Db::prepareDateForDb((new DateTime())->modify('-400 days')),
+        ], ['action' => 'fixture-old'])->execute();
+
+        // Only Waver's own handler. Running every plugin's GC in this shared harness trips over
+        // other plugins' bugs, which is not what this check is about.
+        $events = (new ReflectionProperty(yii\base\Event::class, '_events'))->getValue();
+        $ran = 0;
+
+        foreach ($events[craft\services\Gc::EVENT_RUN][craft\services\Gc::class] ?? [] as [$handler]) {
+            if ($handler instanceof Closure && (new ReflectionFunction($handler))->getClosureScopeClass()?->getName() === Plugin::class) {
+                $handler(new yii\base\Event());
+                $ran++;
+            }
+        }
+
+        return $ran === 1 && $plugin->getLog()->getEntries(['action' => 'fixture-old'], 1) === []
+            ?: "$ran handler(s) ran; the old row " . ($plugin->getLog()->getEntries(['action' => 'fixture-old'], 1) ? 'survived' : 'is gone');
+    });
+
     // ---------------------------------------------------------------------
     section('The API client');
 
@@ -1230,6 +1261,114 @@ try {
     }
 
     applySettings(mappedSettings());
+
+    // ---------------------------------------------------------------------
+    section('The API client — what may be sent twice');
+
+    /**
+     * Point the API client at canned responses. Returns a counter of how many requests it saw.
+     */
+    $mockWave = function(array $responses) use ($plugin): ArrayObject {
+        $seen = new ArrayObject();
+        $mock = new GuzzleHttp\Handler\MockHandler($responses);
+        $stack = GuzzleHttp\HandlerStack::create($mock);
+        $stack->push(GuzzleHttp\Middleware::history($seen));
+        $plugin->getApi()->handler = $stack;
+
+        return $seen;
+    };
+
+    $timeout = fn() => new GuzzleHttp\Exception\ConnectException(
+        'cURL error 28: Operation timed out',
+        new GuzzleHttp\Psr7\Request('POST', justinholtweb\waver\services\Api::ENDPOINT),
+        null,
+        ['errno' => 28]
+    );
+    $refused = fn() => new GuzzleHttp\Exception\ConnectException(
+        'cURL error 7: Failed to connect',
+        new GuzzleHttp\Psr7\Request('POST', justinholtweb\waver\services\Api::ENDPOINT),
+        null,
+        ['errno' => 7]
+    );
+    $ok = fn() => new GuzzleHttp\Psr7\Response(200, [], '{"data":{"fixtureCreate":{"didSucceed":true}}}');
+    $mutate = fn() => $plugin->getApi()->mutate('fixture-mutation', 'mutation { fixtureCreate { didSucceed } }', 'fixtureCreate', []);
+
+    applySettings(mappedSettings(['accessToken' => 'waver-mock-token']));
+
+    try {
+        check('a mutation that timed out is not sent again, and is reported as in doubt', function() use ($mockWave, $timeout, $ok, $mutate) {
+            $seen = $mockWave([$timeout(), $ok(), $ok()]);
+            $result = $mutate();
+
+            return count($seen) === 1 && $result['ok'] === false && $result['ambiguous'] === true
+                ?: count($seen) . ' requests, ' . json_encode($result);
+        });
+
+        check('a mutation that got a 5xx is not sent again, and is reported as in doubt', function() use ($mockWave, $ok, $mutate) {
+            $seen = $mockWave([new GuzzleHttp\Psr7\Response(502, [], 'Bad Gateway'), $ok(), $ok()]);
+            $result = $mutate();
+
+            return count($seen) === 1 && $result['ambiguous'] === true ?: count($seen) . ' requests, ' . json_encode($result);
+        });
+
+        check('a mutation that never connected is retried, because nothing reached Wave', function() use ($mockWave, $refused, $ok, $mutate) {
+            $seen = $mockWave([$refused(), $ok()]);
+            $result = $mutate();
+
+            return count($seen) === 2 && $result['ok'] === true ?: count($seen) . ' requests, ' . json_encode($result);
+        });
+
+        check('a mutation that was rate limited is retried', function() use ($mockWave, $ok, $mutate) {
+            $seen = $mockWave([new GuzzleHttp\Psr7\Response(429), $ok()]);
+            $result = $mutate();
+
+            return count($seen) === 2 && $result['ok'] === true ?: count($seen) . ' requests, ' . json_encode($result);
+        });
+
+        check('a mutation Wave refused outright is final, not in doubt', function() use ($mockWave, $mutate) {
+            $seen = $mockWave([new GuzzleHttp\Psr7\Response(400, [], '{"errors":[{"message":"nope"}]}')]);
+            $result = $mutate();
+
+            return count($seen) === 1 && $result['ok'] === false && $result['ambiguous'] === false
+                ?: count($seen) . ' requests, ' . json_encode($result);
+        });
+
+        check('a query is still retried through a 5xx, because reading twice is harmless', function() use ($mockWave, $plugin) {
+            $seen = $mockWave([new GuzzleHttp\Psr7\Response(503), new GuzzleHttp\Psr7\Response(200, [], '{"data":{"user":{"id":"1"}}}')]);
+            $result = $plugin->getApi()->query('fixture-query', 'query { user { id } }');
+
+            return count($seen) === 2 && $result['ok'] === true ?: count($seen) . ' requests, ' . json_encode($result);
+        });
+
+        check('the token goes to Wave and never follows a redirect', function() use ($mockWave, $mutate) {
+            $seen = $mockWave([new GuzzleHttp\Psr7\Response(302, ['Location' => 'https://example.com/steal'], ''), new GuzzleHttp\Psr7\Response(200)]);
+            $mutate();
+
+            return count($seen) === 1 && (string)$seen[0]['request']->getUri() === justinholtweb\waver\services\Api::ENDPOINT
+                ?: count($seen) . ' requests';
+        });
+
+        $doubtfulOrder = makeOrder([['variant' => $variantA, 'qty' => 1]]);
+
+        check('a sale whose answer was lost stays pending, not failed', function() use ($plugin, $mockWave, $timeout, $doubtfulOrder) {
+            $mockWave([$timeout()]);
+            $record = $plugin->getRecords()->sync($doubtfulOrder);
+
+            return $record->status === Record::STATUS_PENDING && $record->attempts === 1
+                ?: "{$record->status} after {$record->attempts} attempt(s): {$record->message}";
+        });
+
+        check('and is never sent again on its own', function() use ($plugin, $mockWave, $ok, $doubtfulOrder) {
+            $seen = $mockWave([$ok(), $ok()]);
+            $record = $plugin->getRecords()->sync($doubtfulOrder);
+
+            return count($seen) === 0 && $record->status === Record::STATUS_PENDING
+                ?: count($seen) . " requests, status {$record->status}";
+        });
+    } finally {
+        $plugin->getApi()->handler = null;
+        applySettings(mappedSettings());
+    }
 
     // ---------------------------------------------------------------------
     section('Twig');
@@ -1290,12 +1429,39 @@ try {
     });
 
     check('every translatable string has an entry', function() {
-        $translations = require dirname(__DIR__, 2) . '/src/translations/en/waver.php';
+        $src = dirname(__DIR__, 2) . '/src';
+        $translations = require $src . '/translations/en/waver.php';
+        $missing = [];
+        $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($src, FilesystemIterator::SKIP_DOTS));
 
-        return is_array($translations)
-            && isset($translations['Waver'], $translations['Records'])
-            && count($translations) > 100
-            ?: 'only ' . count($translations) . ' strings';
+        foreach ($files as $file) {
+            $path = $file->getPathname();
+
+            if (str_contains($path, '/translations/')) {
+                continue;
+            }
+
+            $code = file_get_contents($path);
+            $pattern = str_ends_with($path, '.php')
+                ? "/Craft::t\\(\\s*'waver',\\s*'((?:[^'\\\\]|\\\\.)*)'/"
+                : (str_ends_with($path, '.twig') ? "/'((?:[^'\\\\]|\\\\.)*)'\\s*\\|\\s*t\\(\\s*'waver'/" : null);
+
+            if ($pattern === null) {
+                continue;
+            }
+
+            preg_match_all($pattern, $code, $matches);
+
+            foreach ($matches[1] as $string) {
+                $string = str_replace("\\'", "'", $string);
+
+                if (!array_key_exists($string, $translations)) {
+                    $missing[] = $string;
+                }
+            }
+        }
+
+        return $missing === [] ?: 'missing: ' . implode(' | ', array_unique($missing));
     });
 } finally {
     section('Cleaning up');

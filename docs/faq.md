@@ -33,8 +33,11 @@ other people's accounts, which is not what a single merchant connecting their ow
 ## What happens if Wave is down when an order completes?
 
 The order completes normally. Waver records off the request in a queue job, so a customer is never
-waiting on Wave, and nothing in checkout can be blocked by an outage. The record is marked failed
-with Wave's reason, and `waver/sync/retry` picks it up later.
+waiting on Wave, and nothing in checkout can be blocked by an outage. If Wave refused the
+call outright, or it never connected, the record is marked failed with Wave's reason and
+`waver/sync/retry` picks it up later. If the call timed out or Wave answered with a server error,
+the sale may already be in Wave, so the record stays pending and Waver asks you to check Wave
+before resending — it will not guess.
 
 ## Can it post the same order twice?
 

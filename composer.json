@@ -15,6 +15,7 @@
         "invoicing"
     ],
     "license": "proprietary",
+    "homepage": "https://justinholt.com/plugins/craft-waver",
     "authors": [
         {
             "name": "Justin Holt",
@@ -22,7 +23,10 @@
         }
     ],
     "support": {
-        "email": "justin@justinholt.com"
+        "email": "justin@justinholt.com",
+        "docs": "https://justinholt.com/plugins/craft-waver/docs",
+        "source": "https://github.com/justinholtweb/craft-waver",
+        "issues": "https://github.com/justinholtweb/craft-waver/issues"
     },
     "minimum-stability": "stable",
     "prefer-stable": true,
@@ -48,7 +52,7 @@
         "handle": "waver",
         "developer": "Justin Holt",
         "developerUrl": "https://justinholt.com",
-        "documentationUrl": "https://github.com/justinholtweb/craft-waver/blob/main/README.md",
+        "documentationUrl": "https://justinholt.com/plugins/craft-waver/docs",
         "changelogUrl": "https://raw.githubusercontent.com/justinholtweb/craft-waver/main/CHANGELOG.md",
         "class": "justinholtweb\\waver\\Plugin"
     }

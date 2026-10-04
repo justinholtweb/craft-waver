@@ -25,6 +25,7 @@ class RecordsController extends Controller
             return false;
         }
 
+        $this->requireCpRequest();
         $this->requirePermission('waver-viewRecords');
 
         return true;

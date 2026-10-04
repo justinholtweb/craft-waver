@@ -26,10 +26,11 @@
                 </tr>
                 <tr><th>{{ 'Amount'|t('waver') }}</th><td>{{ record.amount ? record.amount|number_format(2) : '—' }} {{ record.currency }}</td></tr>
                 <tr><th>{{ 'External id'|t('waver') }}</th><td><code>{{ record.externalId }}</code></td></tr>
-                <tr><th>{{ 'Wave id'|t('waver') }}</th><td>{{ record.waveId ? '<code>' ~ record.waveId ~ '</code>'|raw : '—' }}</td></tr>
+                <tr><th>{{ 'Wave id'|t('waver') }}</th><td>{% if record.waveId %}<code>{{ record.waveId }}</code>{% else %}—{% endif %}</td></tr>
                 <tr><th>{{ 'Attempts'|t('waver') }}</th><td>{{ record.attempts }}</td></tr>
                 <tr><th>{{ 'Recorded'|t('waver') }}</th><td>{{ record.dateSynced ? record.dateSynced|datetime('short') : '—' }}</td></tr>
-                {% if record.viewUrl %}
+                {# Only ever a Wave https link: it comes back from the API and lands in an href. #}
+                {% if record.viewUrl and record.viewUrl starts with 'https://' %}
                     <tr><th>{{ 'In Wave'|t('waver') }}</th><td><a href="{{ record.viewUrl }}" rel="noopener noreferrer" target="_blank">{{ record.invoiceNumber ?? record.viewUrl }}</a></td></tr>
                 {% endif %}
             </tbody>
