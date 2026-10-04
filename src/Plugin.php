@@ -288,6 +288,13 @@ class Plugin extends BasePlugin
                         ],
                         'waver-viewLog' => [
                             'label' => Craft::t('waver', 'View the connection log'),
+                            'nested' => [
+                                // Its own permission: the log is the only record of what Waver
+                                // sent, and clearing it cannot be undone.
+                                'waver-clearLog' => [
+                                    'label' => Craft::t('waver', 'Clear the connection log'),
+                                ],
+                            ],
                         ],
                     ],
                 ];

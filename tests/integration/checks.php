@@ -1129,6 +1129,18 @@ try {
     // ---------------------------------------------------------------------
     section('Log');
 
+    check('clearing the log is its own permission, nested under viewing it', function() {
+        foreach (Craft::$app->getUserPermissions()->getAllPermissions() as $group) {
+            $nested = $group['permissions']['waver-viewLog']['nested'] ?? null;
+
+            if ($nested !== null) {
+                return isset($nested['waver-clearLog']) ?: 'waver-clearLog is not nested under waver-viewLog';
+            }
+        }
+
+        return 'waver-viewLog is not registered';
+    });
+
     check('entries are written and read back', function() use ($plugin) {
         $before = $plugin->getLog()->count();
         $plugin->getLog()->write('fixture', ['summary' => 'hello', 'level' => 'info', 'request' => '{"a":1}']);

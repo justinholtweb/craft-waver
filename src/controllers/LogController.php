@@ -62,6 +62,7 @@ class LogController extends Controller
     public function actionClear(): Response
     {
         $this->requirePostRequest();
+        $this->requirePermission('waver-clearLog');
 
         $deleted = Plugin::getInstance()->getLog()->clear();
 

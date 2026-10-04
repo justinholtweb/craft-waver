@@ -226,6 +226,7 @@ return [
     'Unspecified' => 'Unspecified',
     'View' => 'View',
     'View the connection log' => 'View the connection log',
+    'Clear the connection log' => 'Clear the connection log',
     'View Wave records' => 'View Wave records',
     'warning' => 'warning',
     'Wave' => 'Wave',

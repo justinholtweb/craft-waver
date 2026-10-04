@@ -39,9 +39,11 @@
             </tbody>
         </table>
 
-        <div class="buttons" style="margin-top: 16px;">
-            <button type="button" class="btn" data-waver-clear-log>{{ 'Clear the log'|t('waver') }}</button>
-        </div>
+        {% if currentUser.can('waver-clearLog') %}
+            <div class="buttons" style="margin-top: 16px;">
+                <button type="button" class="btn" data-waver-clear-log>{{ 'Clear the log'|t('waver') }}</button>
+            </div>
+        {% endif %}
 
         {% js %}
         (function() {
