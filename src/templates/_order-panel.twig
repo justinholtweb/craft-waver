@@ -79,7 +79,7 @@
                         var tr = body.insertRow();
                         // Every value goes in as text, never as markup: a line description comes
                         // from a merchant-editable product title.
-                        [row.role, row.account, row.debit || '', row.credit || ''].forEach(function(value) {
+                        [row.role, row.accountName || row.account || '—', row.debit || '', row.credit || ''].forEach(function(value) {
                             tr.insertCell().textContent = value;
                         });
                     });

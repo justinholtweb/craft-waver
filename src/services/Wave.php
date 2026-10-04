@@ -120,6 +120,31 @@ class Wave extends Component
     }
 
     /**
+     * Account names by id, from the cache only. The preview uses this, and a preview must never
+     * wait on Wave or fail because Wave is down — an id it cannot name is shown as the id.
+     *
+     * @return array<string, string>
+     */
+    public function getCachedAccountNames(string $businessId): array
+    {
+        $cached = $businessId !== '' ? Craft::$app->getCache()->get('waver.accounts.' . md5($businessId)) : false;
+
+        if (!is_array($cached)) {
+            return [];
+        }
+
+        $names = [];
+
+        foreach ($cached as $row) {
+            if (isset($row['id'], $row['name'])) {
+                $names[(string)$row['id']] = (string)$row['name'];
+            }
+        }
+
+        return $names;
+    }
+
+    /**
      * @return array<int, array{id: string, name: string, abbreviation: string, rate: string}>
      */
     public function getSalesTaxes(string $businessId, bool $flush = false): array

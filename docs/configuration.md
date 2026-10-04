@@ -143,6 +143,9 @@ the original.
 | ↳ Send orders to Wave | **Send to Wave** and **Ask Wave** |
 | ↳ Force a resend, or mark a record as recorded by hand | The two actions that can double or falsify an entry |
 | View the connection log | The log screens (Pro) |
+| ↳ Clear the connection log | **Clear the log** on the log screen |
 
-The last one is deliberately separate. Forcing a resend can post the same money twice, and marking
-a record as recorded asserts something about Wave that Craft cannot verify.
+The override is deliberately separate. Forcing a resend can post the same money twice, and marking
+a record as recorded asserts something about Wave that Craft cannot verify. Clearing the log is
+separate too: it is the only record of what Waver sent, and it can't be undone. Admins have every
+permission.

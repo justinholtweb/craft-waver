@@ -3,9 +3,10 @@
 Wave accounting for Craft Commerce. Every order lands in Wave once, balanced, with the tax split
 out and the discounts booked where an accountant would put them.
 
-- **Lite** — free. One balanced money transaction per completed order.
+- **Lite** — free. One balanced money transaction per completed order, plus backfill and retry
+  from the console.
 - **Pro** — $99 one-off, $49/year renewal. Invoices, refunds, per-gateway and per-store routing,
-  the connection log, backfill.
+  the connection log.
 
 Requires Craft CMS 5.3+, Craft Commerce 5.0+ and PHP 8.2+.
 
@@ -176,6 +177,7 @@ php craft waver/log/clear
 | ↳ Send orders to Wave | The **Send to Wave** button and **Ask Wave** |
 | ↳ Force a resend, or mark a record as recorded by hand | The two actions that can double or falsify an entry |
 | View the connection log | The log screens (Pro) |
+| ↳ Clear the connection log | **Clear the log** on the log screen |
 
 ## Lite and Pro
 

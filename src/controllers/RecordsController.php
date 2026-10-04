@@ -6,6 +6,8 @@ use Craft;
 use craft\commerce\elements\Order;
 use craft\helpers\UrlHelper;
 use craft\web\Controller;
+use justinholtweb\waver\helpers\Money;
+use justinholtweb\waver\models\Entry;
 use justinholtweb\waver\models\Record;
 use justinholtweb\waver\Plugin;
 use yii\web\NotFoundHttpException;
@@ -79,13 +81,30 @@ class RecordsController extends Controller
 
         $order = $this->orderFromRequest();
         $entry = Plugin::getInstance()->getLedger()->buildEntry($order);
+        $names = Plugin::getInstance()->getWave()->getCachedAccountNames($entry->businessId);
+
+        // The anchor is the other side of every line, so the table only balances on screen with
+        // it in. Money arriving in the anchor account is a debit to it.
+        $deposit = $entry->direction === Entry::DIRECTION_DEPOSIT;
+        $rows = [[
+            'role' => 'anchor',
+            'account' => $entry->anchorAccountId,
+            'description' => null,
+            'debit' => $deposit ? Money::format($entry->anchorAmount) : null,
+            'credit' => $deposit ? null : Money::format($entry->anchorAmount),
+        ], ...$entry->toRows()];
+
+        foreach ($rows as &$row) {
+            $row['accountName'] = $names[$row['account']] ?? null;
+        }
+        unset($row);
 
         return $this->asJson([
             'success' => true,
             'sendable' => $entry->isSendable(),
             'blockers' => $entry->blockers(),
             'skipReasons' => Plugin::getInstance()->getLedger()->getSkipReasons($order),
-            'rows' => $entry->toRows(),
+            'rows' => $rows,
             'drift' => $entry->drift(),
             'payload' => $entry->toWaveInput(),
         ]);

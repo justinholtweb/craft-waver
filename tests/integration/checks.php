@@ -1345,6 +1345,18 @@ try {
                 ?: count($seen) . ' requests, ' . json_encode($result);
         });
 
+        check('a mutation refused with didSucceed: false is logged as an error, not a success', function() use ($mockWave, $mutate, $plugin) {
+            $mockWave([new GuzzleHttp\Psr7\Response(200, [], '{"data":{"fixtureCreate":{"didSucceed":false,"inputErrors":[{"path":["input","lineItems"],"message":"This account is archived","code":"INVALID"}]}}}')]);
+            $result = $mutate();
+            $entry = $plugin->getLog()->getEntries(['action' => 'fixture-mutation'], 1)[0] ?? null;
+
+            return $result['ok'] === false
+                && $entry !== null
+                && $entry->level === 'error'
+                && str_contains((string)$entry->summary, 'archived')
+                ?: json_encode(['result' => $result, 'level' => $entry?->level, 'summary' => $entry?->summary]);
+        });
+
         check('a query is still retried through a 5xx, because reading twice is harmless', function() use ($mockWave, $plugin) {
             $seen = $mockWave([new GuzzleHttp\Psr7\Response(503), new GuzzleHttp\Psr7\Response(200, [], '{"data":{"user":{"id":"1"}}}')]);
             $result = $plugin->getApi()->query('fixture-query', 'query { user { id } }');

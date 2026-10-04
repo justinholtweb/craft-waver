@@ -1,5 +1,19 @@
 # Changelog
 
+## 5.0.1 — 2026-10-04
+
+### Added
+
+- A **Clear the connection log** permission, nested under viewing it. Viewing the log no longer
+  lets someone erase it.
+- The entry preview shows the anchor line, so the table balances on screen, and names accounts
+  from the cached chart of accounts instead of showing Wave ids.
+- A Privacy and data page in the docs.
+
+### Fixed
+
+- A mutation Wave refused with `didSucceed: false` was logged as a success.
+
 ## 5.0.0 — 2026-08-20
 
 Initial release.

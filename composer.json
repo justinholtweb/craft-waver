@@ -1,7 +1,7 @@
 {
     "name": "justinholtweb/craft-waver",
     "description": "Wave accounting integration for Craft Commerce — every order lands in Wave as balanced, deduplicated bookkeeping.",
-    "version": "5.0.0",
+    "version": "5.0.1",
     "type": "craft-plugin",
     "keywords": [
         "craftcms",

@@ -82,7 +82,7 @@ class Api extends Component
      */
     public function mutate(string $action, string $mutation, string $field, array $input, ?int $orderId = null): array
     {
-        $result = $this->send($action, $mutation, ['input' => $input], $orderId, true);
+        $result = $this->send($action, $mutation, ['input' => $input], $orderId, $field);
 
         if (!$result['ok']) {
             return $result;
@@ -182,12 +182,14 @@ class Api extends Component
 
     /**
      * @param array<string, mixed> $variables
-     * @param bool $isMutation Whether Wave could act on this request, which decides what may be
-     *                         retried and what counts as ambiguous.
+     * @param string|null $mutationField The mutation's output field, or null for a query. Whether
+     *                                   Wave could act on the request decides what may be retried
+     *                                   and what counts as ambiguous.
      * @return array{ok: bool, data: array, message: string, code: string|null, ambiguous: bool}
      */
-    private function send(string $action, string $query, array $variables, ?int $orderId = null, bool $isMutation = false): array
+    private function send(string $action, string $query, array $variables, ?int $orderId = null, ?string $mutationField = null): array
     {
+        $isMutation = $mutationField !== null;
         $settings = Plugin::getInstance()->getSettings();
         $token = $settings->getParsedAccessToken();
 
@@ -229,7 +231,18 @@ class Api extends Component
                     return ['ok' => false, 'data' => $decoded['data'] ?? [], 'message' => $message, 'code' => $code, 'ambiguous' => false];
                 }
 
-                $this->log($action, LogEntry::LEVEL_INFO, $response->getStatusCode(), $started, Craft::t('waver', '{action} succeeded', ['action' => $action]), $encoded, $raw, $orderId);
+                // A refused mutation is an HTTP 200 with `didSucceed: false`, so the log has to read
+                // the output object too, or it records a sale that never happened as a success.
+                $output = $isMutation ? ($decoded['data'][$mutationField] ?? null) : null;
+
+                if ($isMutation && (!is_array($output) || empty($output['didSucceed']))) {
+                    $summary = is_array($output)
+                        ? $this->describeInputErrors($output['inputErrors'] ?? [])
+                        : Craft::t('waver', 'Wave returned no {field} result.', ['field' => $mutationField]);
+                    $this->log($action, LogEntry::LEVEL_ERROR, $response->getStatusCode(), $started, $summary, $encoded, $raw, $orderId);
+                } else {
+                    $this->log($action, LogEntry::LEVEL_INFO, $response->getStatusCode(), $started, Craft::t('waver', '{action} succeeded', ['action' => $action]), $encoded, $raw, $orderId);
+                }
 
                 return ['ok' => true, 'data' => $decoded['data'] ?? [], 'message' => '', 'code' => null, 'ambiguous' => false];
             } catch (\Throwable $e) {

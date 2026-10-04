@@ -11,8 +11,9 @@ plugin's marketing page at
 ./build.sh "2 5"    # just slides 2 and 5
 ```
 
-Output lands in `out/` as `waver-promo-N.png`, 1920×1080 (rendered at 2× in headless Chrome, then
-downsampled so the type stays crisp).
+Output lands in `out/` as `waver-promo-N.jpg`, 1920×1080 (rendered at 2× in headless Chrome, then
+downsampled and converted to JPEG in one `sips` pass so the type stays crisp). Promos are always
+JPEG, never PNG.
 
 ## Slides
 
